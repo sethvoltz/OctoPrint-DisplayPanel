@@ -440,7 +440,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 				filament = current_data['job']['filament']['tool0'] if "tool0" in current_data['job']['filament'] else current_data['job']['filament']
 				filament_length = int((filament['length'] or 0) / 100) / 10
 				filament_mass = int((filament['volume'] or 0) * 10) / 10
-				self.draw.text((left, top + 27), "Filament: %sm/%sg" % (filament_length, filament_mass), font=self.font, fill=255)
+				self.draw.text((left, top + 27), "Filament: %sm/%scm3" % (filament_length, filament_mass), font=self.font, fill=255)
 			else:
 				self.draw.text((left, top + 18), "Waiting for file...", font=self.font, fill=255)
 		except Exception as ex:
