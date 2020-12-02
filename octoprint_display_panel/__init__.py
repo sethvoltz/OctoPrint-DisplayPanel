@@ -446,8 +446,8 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 				self.draw.text((left, top + 18), "Time: %s" % (print_time), font=self.font, fill=255)
 
 				filament = current_data['job']['filament']['tool0'] if "tool0" in current_data['job']['filament'] else current_data['job']['filament']
-				filament_length = int((filament['length'] or 0) / 100) / 10
-				filament_mass = int((filament['volume'] or 0) * 10) / 10
+				filament_length = self.float_count_formatter((filament['length'] or 0) / 1000, 3)
+				filament_mass = self.float_count_formatter(filament['volume'] or 0, 3)
 				self.draw.text((left, top + 27), "Filament: %sm/%scm3" % (filament_length, filament_mass), font=self.font, fill=255)
 			else:
 				self.draw.text((left, top + 18), "Waiting for file...", font=self.font, fill=255)
@@ -522,6 +522,19 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			seconds = seconds % 60
 
 		return self._etl_format.format(**locals())
+
+	def float_count_formatter(self, number, max_chars):
+		"""
+		Show decimals up to a max number of characters, then flips over and rounds to integer
+		"""
+
+		int_part = "%i" % round(number)
+		if len(int_part) >= max_chars - 1:
+			return int_part
+		elif len("%f" % number) <= max_chars:
+			return "%f" % number
+		else:
+			return "{num:0.{width}f}".format(num=number, width=len(int_part) - 1)
 
 	def log_error(self, ex):
 		"""
