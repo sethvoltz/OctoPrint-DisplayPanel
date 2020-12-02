@@ -20,7 +20,7 @@ import inspect
 import adafruit_ssd1306
 import RPi.GPIO as GPIO
 
-class ScreenMode(Enum):
+class ScreenModes(Enum):
 	PRINT = 1
 	PRINTER = 2
 	SYSTEM = 3
@@ -40,7 +40,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 	BCM_PINS = { 4: 'mode', 22: 'cancel', 17: 'play', 27: 'pause' }
 	BOARD_PINS = { 7: 'mode', 15: 'cancel', 11: 'play', 13: 'pause' }
 
-	screen_mode = ScreenMode.SYSTEM
+	screen_mode = ScreenModes.SYSTEM
 	input_pinset = BCM_PINS
 
 	system_stats = {}
@@ -70,7 +70,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		self.clear_display()
 		self.check_system_stats()
 		self.start_system_timer()
-		self.screen_mode = ScreenMode.SYSTEM
+		self.screen_mode = ScreenModes.SYSTEM
 		self.update_ui()
 
 	##~~ ShutdownPlugin mixin
@@ -92,13 +92,16 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		# self._logger.info("on_event: %s", event)
 		
 		# Connectivity
+		if event == Events.DISCONNECTED:
+			self.screen_mode = ScreenModes.SYSTEM
+
 		if event in (Events.CONNECTED, Events.CONNECTING, Events.CONNECTIVITY_CHANGED,
-								 Events.DISCONNECTED, Events.DISCONNECTING):
+								 Events.DISCONNECTING):
 			self.update_ui()
 		
 		# Print start display
 		if event == Events.PRINT_STARTED:
-			self.screen_mode = ScreenMode.PRINT
+			self.screen_mode = ScreenModes.PRINT
 			self.update_ui()
 		
 		# Print end states
@@ -176,7 +179,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		performant and not block.
 		"""
 
-		if self.screen_mode == ScreenMode.SYSTEM:
+		if self.screen_mode == ScreenModes.SYSTEM:
 			s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 			s.connect(("8.8.8.8", 80))
 			self.system_stats['ip'] = s.getsockname()[0]
@@ -186,7 +189,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			self.system_stats['disk'] = shutil.disk_usage('/') # disk percentage = 100 * used / (used + free)
 
 			self.update_ui()
-		elif self.screen_mode == ScreenMode.PRINTER:
+		elif self.screen_mode == ScreenModes.PRINTER:
 			# Just update the UI, the printer mode will take care of itself
 			self.update_ui()
 
@@ -330,11 +333,11 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			
 			if self._cancel_timer is not None and current_data['state']['flags']['cancelling'] is False:
 				self.update_ui_cancel_confirm()
-			elif self.screen_mode == ScreenMode.SYSTEM:
+			elif self.screen_mode == ScreenModes.SYSTEM:
 				self.update_ui_system()
-			elif self.screen_mode == ScreenMode.PRINTER:
+			elif self.screen_mode == ScreenModes.PRINTER:
 				self.update_ui_printer()
-			elif self.screen_mode == ScreenMode.PRINT:
+			elif self.screen_mode == ScreenModes.PRINT:
 				self.update_ui_print(current_data)
 			
 			self.update_ui_bottom(current_data)
@@ -406,14 +409,19 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		left = 0
 
 		try:
-			temperatures = self._printer.get_current_temperatures()
-			tool = temperatures['tool0'] or None
-			bed = temperatures['bed'] or None
-
 			self.draw.rectangle((0, 0, self.width, bottom), fill=0)
 			self.draw.text((left, top + 0), "Printer Temperatures", font=self.font, fill=255)
-			self.draw.text((left, top + 9), "Head: %s / %s ºC" % (tool['actual'], tool['target']), font=self.font, fill=255)
-			self.draw.text((left, top + 18), " Bed: %s / %s ºC" % (bed['actual'], bed['target']), font=self.font, fill=255)
+
+			if self._printer.get_current_connection()[0] == "Closed":
+				self.draw.text((left, top + 9), "Head: no printer", font=self.font, fill=255)
+				self.draw.text((left, top + 18), " Bed: no printer", font=self.font, fill=255)
+			else:
+				temperatures = self._printer.get_current_temperatures()
+				tool = temperatures['tool0'] or None
+				bed = temperatures['bed'] or None
+
+				self.draw.text((left, top + 9), "Head: %s / %s ºC" % (tool['actual'], tool['target']), font=self.font, fill=255)
+				self.draw.text((left, top + 18), " Bed: %s / %s ºC" % (bed['actual'], bed['target']), font=self.font, fill=255)
 		except Exception as ex:
 			self.log_error(ex)
 
