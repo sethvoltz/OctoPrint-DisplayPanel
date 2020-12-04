@@ -19,10 +19,8 @@ or manually using this URL:
 
 Before installation, you will need to `pip` install a few dependencies. Please ensure you are using the `virtualenv` bundled version:
 
-    ```sh
     ~/oprint/bin/pip install pillow
     ~/oprint/bin/pip install adafruit-circuitpython-ssd1306
-    ```
 
 These will allow communication with the OLED display.
 
