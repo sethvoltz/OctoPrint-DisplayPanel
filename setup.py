@@ -14,7 +14,7 @@ plugin_package = "octoprint_display_panel"
 plugin_name = "OctoPrint-DisplayPanel"
 
 # The plugin's version. Can be overwritten within OctoPrint's internal data via __plugin_version__ in the plugin module
-plugin_version = "0.1.0"
+plugin_version = "1.0.0"
 
 # The plugin's description. Can be overwritten within OctoPrint's internal data via __plugin_description__ in the plugin
 # module
@@ -33,7 +33,7 @@ plugin_url = "https://github.com/sethvoltz/OctoPrint-DisplayPanel"
 plugin_license = "MIT"
 
 # Any additional requirements besides OctoPrint should be listed here
-plugin_requires = []
+plugin_requires = ["adafruit-circuitpython-ssd1306", "pillow"]
 
 ### --------------------------------------------------------------------------------------------------------------------
 ### More advanced options that you usually shouldn't have to touch follow after this point

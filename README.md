@@ -27,14 +27,7 @@ Once the board is wired up, run the wires through the hole in the back of the ba
 
 **NOTE:** This plugin required OctoPrint to be updated to run on Python 3. Please follow [these instructions](https://community.octoprint.org/t/upgrade-your-octoprint-install-to-python-3/23973) if you are not already on Python 3.
 
-Before installation, you will need to `pip` install a few dependencies. Please ensure you are using the `virtualenv` bundled version:
-
-    ~/oprint/bin/pip install pillow
-    ~/oprint/bin/pip install adafruit-circuitpython-ssd1306
-
-These will allow communication with the OLED display.
-
-Lastly, install via the bundled [Plugin Manager](https://docs.octoprint.org/en/master/bundledplugins/pluginmanager.html)
+Install via the bundled [Plugin Manager](https://docs.octoprint.org/en/master/bundledplugins/pluginmanager.html)
 or manually using this URL:
 
     https://github.com/sethvoltz/OctoPrint-DisplayPanel/archive/master.zip
