@@ -30,7 +30,7 @@ plugin_author_email = "seth@seth.to"
 plugin_url = "https://github.com/sethvoltz/OctoPrint-DisplayPanel"
 
 # The plugin's license. Can be overwritten within OctoPrint's internal data via __plugin_license__ in the plugin module
-plugin_license = "AGPLv3"
+plugin_license = "MIT"
 
 # Any additional requirements besides OctoPrint should be listed here
 plugin_requires = []
