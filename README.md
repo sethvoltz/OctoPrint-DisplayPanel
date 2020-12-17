@@ -4,11 +4,9 @@
 
 This plugin implements the software control side of an OctoPrint Control Panel for Octopi. The hardware half is a series of 4 buttons, an OLED screen and a 3D printed case that mounts on the printer next to the Raspnerry Pi so it can be plugged in to the header pins.
 
-**Watch a demo of the prototype in action!**
+**Watch a demo of the panel in action!** More photos are at the end of this readme.
 
 [![Screenshot of demo video](https://img.youtube.com/vi/78emT1ollu4/0.jpg)](https://youtu.be/78emT1ollu4 "Click here to watch a demo on YouTube")
-
-More photos at the end of the readme.
 
 ## Hardware
 
@@ -23,7 +21,7 @@ Wire up the board as in the diagram below, ensuring that the OLED is set at or b
 
 Once the board is wired up, run the wires through the hole in the back of the base of the case, slide the board into the lid and slide the lid into the base. Depending on your printer, the lid should slide on with just enough grip to hold in place and the lid and base work together to hold the board in the correct position.
 
-![Wiring diagram for the control panel](https://raw.githubusercontent.com/sethvoltz/OctoPrint-DisplayPanel/master/docs/wiring-diagram.jpg)
+![Wiring diagram for the control panel](https://raw.githubusercontent.com/sethvoltz/OctoPrint-DisplayPanel/master/docs/wiring-diagram.png)
 
 ## Setup
 
