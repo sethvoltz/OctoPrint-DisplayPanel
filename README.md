@@ -12,7 +12,7 @@ This plugin implements the software control side of an OctoPrint Control Panel f
 
 Besides the [3D printed parts](https://www.thingiverse.com/thing:4674214), you will need the following parts:
 
-- 1x 30x70mm proto board (similar to [this product](https://www.amazon.com/gp/product/B06XGWSWT1))
+- 1x 30x70mm proto board ([Amazon](https://www.amazon.com/gp/product/B06XGWSWT1))
 - 1x 0.96" i2c OLED display ([Amazon](https://www.amazon.com/gp/product/B0833PF7ML))
 - 4x 12mm tactile buttons ([Amazon](https://www.amazon.com/gp/product/B019I11FI2))
 - Wires
@@ -27,10 +27,32 @@ Once the board is wired up, run the wires through the hole in the back of the ba
 
 **NOTE:** This plugin required OctoPrint to be updated to run on Python 3. Please follow [these instructions](https://community.octoprint.org/t/upgrade-your-octoprint-install-to-python-3/23973) if you are not already on Python 3.
 
-Install via the bundled [Plugin Manager](https://docs.octoprint.org/en/master/bundledplugins/pluginmanager.html)
-or manually using this URL:
+First ensure i2c is enabled on the Pi by running `sudo raspi-config` and navigating to `Interfacing Options` > `I2C` > `<Yes>` > `<OK>`. Exit the config tool, then restart the Pi.
 
-    https://github.com/sethvoltz/OctoPrint-DisplayPanel/archive/master.zip
+After restarting, install `i2c-tools` and make sure the Pi can see the display.
+
+```bash
+$ sudo apt-get update && sudo apt-get install i2c-tools
+...
+$ sudo i2cdetect -y 1
+     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+00:          -- -- -- -- -- -- -- -- -- -- -- -- --
+10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+20: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+30: -- -- -- -- -- -- -- -- -- -- -- -- 3c -- -- --
+40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+50: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+60: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+70: -- -- -- -- -- -- -- --
+```
+
+The `3c` there is the OLED display. If you don't see it, check your wiring and try rebooting the pi again.
+
+With I2C confirmed, install via the bundled [Plugin Manager](https://docs.octoprint.org/en/master/bundledplugins/pluginmanager.html) or manually using this URL:
+
+```none
+https://github.com/sethvoltz/OctoPrint-DisplayPanel/archive/master.zip
+```
 
 ## Configuration
 
