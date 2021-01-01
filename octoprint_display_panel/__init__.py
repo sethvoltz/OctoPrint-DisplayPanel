@@ -12,6 +12,8 @@ import octoprint.plugin
 from octoprint.events import eventManager, Events
 from octoprint.util import RepeatedTimer
 import time
+import os
+import subprocess
 from enum import Enum
 from board import SCL, SDA
 import busio
@@ -35,27 +37,14 @@ class ScreenModes(Enum):
 class Display_panelPlugin(octoprint.plugin.StartupPlugin,
                           octoprint.plugin.ShutdownPlugin,
                           octoprint.plugin.EventHandlerPlugin,
-                          octoprint.plugin.ProgressPlugin):
-
-	BCM_PINS = { 4: 'mode', 22: 'cancel', 17: 'play', 27: 'pause' }
-	BOARD_PINS = { 7: 'mode', 15: 'cancel', 11: 'play', 13: 'pause' }
-
-	screen_mode = ScreenModes.SYSTEM
-	input_pinset = BCM_PINS
+                          octoprint.plugin.ProgressPlugin,
+                          octoprint.plugin.TemplatePlugin,
+                          octoprint.plugin.SettingsPlugin):
 
 	system_stats = {}
-	i2c = busio.I2C(SCL, SDA)
-	disp = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
-	font = ImageFont.load_default()
-	width = disp.width
-	height = disp.height
-	image = Image.new("1", (width, height))
-	draw = ImageDraw.Draw(image)
-	bottom_height = 22
 
 	_cancel_timer = None
 	_cancel_requested_at = 0
-	_eta_strftime = "%-m/%d %-I:%M%p"
 	_etl_format = "{hours:02d}h {minutes:02d}m {seconds:02d}s"
 
 	##~~ StartupPlugin mixin
@@ -65,12 +54,12 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		StartupPlugin lifecycle hook, called after Octoprint startup is complete
 		"""
 
+		self.setup_display()
 		self.setup_gpio()
 		self.configure_gpio()
 		self.clear_display()
 		self.check_system_stats()
 		self.start_system_timer()
-		self.screen_mode = ScreenModes.SYSTEM
 		self.update_ui()
 
 	##~~ ShutdownPlugin mixin
@@ -81,6 +70,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 
 		self.clear_display()
+		self.clean_gpio()
 
 	##~~ EventHandlerPlugin mixin
 
@@ -90,7 +80,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 
 		# self._logger.info("on_event: %s", event)
-		
+
 		# Connectivity
 		if event == Events.DISCONNECTED:
 			self.screen_mode = ScreenModes.SYSTEM
@@ -98,12 +88,12 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		if event in (Events.CONNECTED, Events.CONNECTING, Events.CONNECTIVITY_CHANGED,
 								 Events.DISCONNECTING):
 			self.update_ui()
-		
+
 		# Print start display
 		if event == Events.PRINT_STARTED:
 			self.screen_mode = ScreenModes.PRINT
 			self.update_ui()
-		
+
 		# Print end states
 		if event in (Events.PRINT_FAILED, Events.PRINT_DONE, Events.PRINT_CANCELLED,
 								 Events.PRINT_CANCELLING):
@@ -135,6 +125,144 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		# TODO: Handle slicing progress bar
 		self.update_ui()
 
+	##~~ TemplatePlugin mixin
+	def get_template_configs(self):
+		"""
+		TemplatePlugin lifecycle hook, called to get templated settings
+		"""
+
+		self.get_i2c_devices()
+		return [dict(type="settings", custom_bindings=False)]
+
+	##~~ SettingsPlugin mixin
+
+	def initialize(self):
+		"""
+		Prepare variables for setting modification detection
+		"""
+
+		self.display_init = False
+		self.gpio_init = False
+		self.i2c_devices = []
+		self.last_bounce = self.bounce
+		self.last_date_format = self.date_format
+		self.last_i2c_address = self.i2c_address
+		self.last_pin_cancel = self.pin_cancel
+		self.last_pin_mode = self.pin_mode
+		self.last_pin_pause = self.pin_pause
+		self.last_pin_play = self.pin_play
+		self.screen_mode = ScreenModes.SYSTEM
+
+	def get_settings_defaults(self):
+		"""
+		SettingsPlugin lifecycle hook, called to get default settings
+		"""
+
+		return dict(
+			bounce			= 250,  # Debounce 250ms
+			date_format		= "%-m/%d %-I:%M%p", # Default is month/day hour:minute + AM/PM
+			i2c_address		= "0x3c", # Default is hex address 0x3c
+			pin_cancel		= 22,   # Default is BCM 22
+			pin_mode		= 4,    # Default is BCM 4
+			pin_pause		= 27,   # Default is BCM 27
+			pin_play		= 17,   # Default is BCM 17
+		)
+
+	def on_settings_save(self, data):
+		"""
+		SettingsPlugin lifecycle hook, called when settings are saved
+		"""
+
+		octoprint.plugin.SettingsPlugin.on_settings_save(self, data)
+		pins_updated = 0
+		try:
+			if self.i2c_address.lower() != self.last_i2c_address.lower():
+				self.clear_display()
+				self.display_init = False
+				self.last_date_format = self.date_format
+				self.last_i2c_address = self.i2c_address
+				self.setup_display()
+				self.clear_display()
+				self.check_system_stats()
+				self.start_system_timer()
+				self.screen_mode = ScreenModes.SYSTEM
+				self.update_ui()
+
+			if self.pin_cancel != self.last_pin_cancel:
+				pins_updated = pins_updated + 1
+				self.clean_single_gpio(self.last_pin_cancel)
+			if self.pin_mode != self.last_pin_mode:
+				pins_updated = pins_updated + 2
+				self.clean_single_gpio(self.last_pin_mode)
+			if self.pin_pause != self.last_pin_pause:
+				pins_updated = pins_updated + 4
+				self.clean_single_gpio(self.last_pin_pause)
+			if self.pin_play != self.last_pin_play:
+				pins_updated = pins_updated + 8
+				self.clean_single_gpio(self.last_pin_play)
+
+			self.gpio_init = False
+			self.setup_gpio()
+
+			if pins_updated == (pow(2, 4) - 1) or self.bounce != self.last_bounce:
+				self.configure_gpio()
+				pins_updated = 0
+
+			if pins_updated >= pow(2, 3):
+				self.configure_single_gpio(self.pin_play)
+				pins_updated = pins_updated - pow(2, 3)
+			if pins_updated >= pow(2, 2):
+				self.configure_single_gpio(self.pin_pause)
+				pins_updated = pins_updated - pow(2, 2)
+			if pins_updated >= pow(2, 1):
+				self.configure_single_gpio(self.pin_mode)
+				pins_updated = pins_updated - pow(2, 1)
+			if pins_updated >= pow(2, 0):
+				self.configure_single_gpio(self.pin_cancel)
+				pins_updated = pins_updated - pow(2, 0)
+			if pins_updated > 0:
+				self.log_error("Something went wrong counting updated GPIO pins")
+
+			self.last_bounce = self.bounce
+			self.last_pin_cancel = self.pin_cancel
+			self.last_pin_mode = self.pin_mode
+			self.last_pin_play = self.pin_play
+			self.last_pin_pause = self.pin_pause
+		except Exception as ex:
+			self.log_error(ex)
+			pass
+
+	@property
+	def bounce(self):
+		return int(self._settings.get(["bounce"]))
+
+	@property
+	def date_format(self):
+		return str(self._settings.get(["date_format"]))
+
+	@property
+	def i2c_address(self):
+		if self._settings.get(["i2c_address"])[0:2] == "0x":
+			return hex(int(self._settings.get(["i2c_address"]),base=16))
+		else:
+			return hex(int("0x" + self._settings.get(["i2c_address"]),base=16))
+
+	@property
+	def pin_cancel(self):
+		return int(self._settings.get(["pin_cancel"]))
+
+	@property
+	def pin_mode(self):
+		return int(self._settings.get(["pin_mode"]))
+
+	@property
+	def pin_pause(self):
+		return int(self._settings.get(["pin_pause"]))
+
+	@property
+	def pin_play(self):
+		return int(self._settings.get(["pin_play"]))
+
 	##~~ Softwareupdate hook
 
 	def get_update_information(self):
@@ -163,6 +291,36 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 	##~~ Helpers
 
+	def get_i2c_devices(self):
+		"""
+		Function to detect all connected i2c devices
+		"""
+
+		p = subprocess.Popen(['i2cdetect', '-y','1'],stdout=subprocess.PIPE,)
+		for i in range(0,9):
+			line = str(p.stdout.readline())
+			entries = line.split()
+			for entry in entries:
+				if len(entry) == 2 and entry.isalnum():
+					self.i2c_devices.append(hex(int("0x" + entry,base=16)))
+
+	def bcm2board(self, bcm_pin):
+		"""
+		Function to translate bcm pin to board pin
+		"""
+
+		board_pin = -1
+		if bcm_pin != -1:
+			_bcm2board = [
+				-1, -1, -1,  7, 29, 31,
+				-1, -1, -1, -1, -1, 32,
+				33, -1, -1, 36, 11, 12,
+				35, 38, 40, 15, 16, 18,
+				22, 37, 13
+				]
+			board_pin=_bcm2board[bcm_pin-1]
+		return board_pin
+
 	def start_system_timer(self):
 		"""
 		Function to check system stats periodically
@@ -174,7 +332,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 	def check_system_stats(self):
 		"""
 		Function to collect general system stats about the underlying system(s).
-		
+
 		Called by the system check timer on a regular basis. This function should remain small,
 		performant and not block.
 		"""
@@ -193,12 +351,49 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			# Just update the UI, the printer mode will take care of itself
 			self.update_ui()
 
+	def setup_display(self):
+		"""
+		Intialize display
+		"""
+
+		self.get_i2c_devices()
+		if self.i2c_address.lower in self.i2c_devices:
+			try:
+				self.i2c = busio.I2C(SCL, SDA)
+				self.disp = adafruit_ssd1306.SSD1306_I2C(128, 64, self.i2c, addr=int(self.i2c_address,0))
+				self._logger.info("Setting display to I2C address %s", self.i2c_address)
+				self.display_init = True
+				self.font = ImageFont.load_default()
+				self.width = self.disp.width
+				self.height = self.disp.height
+				self.image = Image.new("1", (self.width, self.height))
+				self.draw = ImageDraw.Draw(self.image)
+				self.bottom_height = 22
+				self.screen_mode = ScreenModes.SYSTEM
+			except Exception as ex:
+				self.log_error(ex)
+				pass
+
 	def setup_gpio(self):
 		"""
 		Setup GPIO to use BCM pin numbering, unless already setup in which case fall back and update
 		globals to reflect change.
 		"""
-		
+
+		self.BCM_PINS = {
+			self.pin_mode: 'mode',
+			self.pin_cancel: 'cancel',
+			self.pin_play: 'play',
+			self.pin_pause: 'pause'
+			}
+		self.BOARD_PINS = {
+			self.bcm2board(self.pin_mode) : 'mode',
+			self.bcm2board(self.pin_cancel): 'cancel',
+			self.bcm2board(self.pin_play): 'play',
+			self.bcm2board(self.pin_pause): 'pause'
+			}
+		self.input_pinset = self.BCM_PINS
+
 		try:
 			current_mode = GPIO.getmode()
 			set_mode = GPIO.BCM
@@ -211,28 +406,68 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 				self.input_pinset = self.BOARD_PINS
 				self._logger.info("GPIO mode was already set, adapting to use BOARD numbering")
 			GPIO.setwarnings(False)
+			self.gpio_init = True
 		except Exception as ex:
 			self.log_error(ex)
-	
+			pass
+
 	def configure_gpio(self):
 		"""
 		Setup the GPIO pins to handle the buttons as inputs with built-in pull-up resistors
 		"""
-		
-		try:
+
+		if self.gpio_init:
 			for gpio_pin in self.input_pinset:
-				GPIO.setup(gpio_pin, GPIO.IN, GPIO.PUD_UP)
-				GPIO.remove_event_detect(gpio_pin)
-				self._logger.info("Adding GPIO event detect on pin %s with edge: FALLING", gpio_pin)
-				GPIO.add_event_detect(gpio_pin, GPIO.FALLING, callback=self.handle_gpio_event, bouncetime=250)
-		except Exception as ex:
-			self.log_error(ex)
+				self.configure_single_gpio(gpio_pin)
+
+	def configure_single_gpio(self, gpio_pin):
+		"""
+		Setup the GPIO pins to handle the buttons as inputs with built-in pull-up resistors
+		"""
+
+		if self.gpio_init:
+			try:
+				if gpio_pin != -1:
+					GPIO.setup(gpio_pin, GPIO.IN, GPIO.PUD_UP)
+					GPIO.remove_event_detect(gpio_pin)
+					self._logger.info("Adding GPIO event detect on pin %s with edge: FALLING", gpio_pin)
+					GPIO.add_event_detect(gpio_pin, GPIO.FALLING, callback=self.handle_gpio_event, bouncetime=self.bounce)
+			except Exception as ex:
+				self.log_error(ex)
+
+	def clean_gpio(self):
+		"""
+		Remove event detection and clean up for all pins (`mode`, `cancel`, `play` and `pause`)
+		"""
+
+		if self.gpio_init:
+			for gpio_pin in self.input_pinset:
+				self.clean_single_gpio(gpio_pin)
+
+	def clean_single_gpio(self, gpio_pin):
+		"""
+		Remove event detection and clean up for all pins (`mode`, `cancel`, `play` and `pause`)
+		"""
+
+		if self.gpio_init:
+			if gpio_pin!=-1:
+				try:
+					GPIO.remove_event_detect(gpio_pin)
+				except Exception as ex:
+					self.log_error(ex)
+					pass
+				try:
+					GPIO.cleanup(gpio_pin)
+				except Exception as ex:
+					self.log_error(ex)
+					pass
+				self._logger.info("Removed GPIO pin %s", gpio_pin)
 
 	def handle_gpio_event(self, channel):
 		"""
 		Event callback for GPIO event, called from `add_event_detect` setup in `configure_gpio`
 		"""
-		
+
 		try:
 			if channel in self.input_pinset:
 				label = self.input_pinset[channel]
@@ -302,9 +537,9 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		# TODO: If a print is queued up and ready, start it
 		if not self._printer.is_paused():
 			return
-		
+
 		self._printer.resume_print()
-	
+
 	def try_pause(self):
 		"""
 		If possible, pause a running print
@@ -312,42 +547,44 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 		if not self._printer.is_printing():
 			return
-		
+
 		self._printer.pause_print()
-	
+
 	def clear_display(self):
 		"""
 		Clear the OLED display completely. Used at startup and shutdown to ensure a blank screen
 		"""
-		
-		self.disp.fill(0)
-		self.disp.show()
+
+		if self.display_init:
+			self.disp.fill(0)
+			self.disp.show()
 
 	def update_ui(self):
 		"""
 		Update the on-screen UI based on the current screen mode and printer status
 		"""
 
-		try:
-			current_data = self._printer.get_current_data()
-			
-			if self._cancel_timer is not None and current_data['state']['flags']['cancelling'] is False:
-				self.update_ui_cancel_confirm()
-			elif self.screen_mode == ScreenModes.SYSTEM:
-				self.update_ui_system()
-			elif self.screen_mode == ScreenModes.PRINTER:
-				self.update_ui_printer()
-			elif self.screen_mode == ScreenModes.PRINT:
-				self.update_ui_print(current_data)
-			
-			self.update_ui_bottom(current_data)
+		if self.display_init:
+			try:
+				current_data = self._printer.get_current_data()
 
-			# Display image.
-			self.disp.image(self.image)
-			self.disp.show()
-		except Exception as ex:
-			self.log_error(ex)
-	
+				if self._cancel_timer is not None and current_data['state']['flags']['cancelling'] is False:
+					self.update_ui_cancel_confirm()
+				elif self.screen_mode == ScreenModes.SYSTEM:
+					self.update_ui_system()
+				elif self.screen_mode == ScreenModes.PRINTER:
+					self.update_ui_printer()
+				elif self.screen_mode == ScreenModes.PRINT:
+					self.update_ui_print(current_data)
+
+				self.update_ui_bottom(current_data)
+
+				# Display image.
+				self.disp.image(self.image)
+				self.disp.show()
+			except Exception as ex:
+				self.log_error(ex)
+
 	def update_ui_cancel_confirm(self):
 		"""
 		Show a confirmation message that a cancel print has been requested
@@ -357,156 +594,161 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		bottom = self.height - self.bottom_height
 		left = 0
 
-		try:
-			self.draw.rectangle((0, 0, self.width, bottom), fill=0)
+		if self.display_init:
+			try:
+				self.draw.rectangle((0, 0, self.width, bottom), fill=0)
 
-			display_string = "Cancel Print?"
-			text_width = self.draw.textsize(display_string, font=self.font)[0]
-			self.draw.text((self.width / 2 - text_width / 2, top + 0), display_string, font=self.font, fill=255)
-			display_string = "Press 'X' to confirm"
-			text_width = self.draw.textsize(display_string, font=self.font)[0]
-			self.draw.text((self.width / 2 - text_width / 2, top + 9), display_string, font=self.font, fill=255)
-			display_string = "Press any button or"
-			text_width = self.draw.textsize(display_string, font=self.font)[0]
-			self.draw.text((self.width / 2 - text_width / 2, top + 18), display_string, font=self.font, fill=255)
-			display_string = "wait 10 sec to escape"
-			text_width = self.draw.textsize(display_string, font=self.font)[0]
-			self.draw.text((self.width / 2 - text_width / 2, top + 27), display_string, font=self.font, fill=255)
-		except Exception as ex:
-			self.log_error(ex)
+				display_string = "Cancel Print?"
+				text_width = self.draw.textsize(display_string, font=self.font)[0]
+				self.draw.text((self.width / 2 - text_width / 2, top + 0), display_string, font=self.font, fill=255)
+				display_string = "Press 'X' to confirm"
+				text_width = self.draw.textsize(display_string, font=self.font)[0]
+				self.draw.text((self.width / 2 - text_width / 2, top + 9), display_string, font=self.font, fill=255)
+				display_string = "Press any button or"
+				text_width = self.draw.textsize(display_string, font=self.font)[0]
+				self.draw.text((self.width / 2 - text_width / 2, top + 18), display_string, font=self.font, fill=255)
+				display_string = "wait 10 sec to escape"
+				text_width = self.draw.textsize(display_string, font=self.font)[0]
+				self.draw.text((self.width / 2 - text_width / 2, top + 27), display_string, font=self.font, fill=255)
+			except Exception as ex:
+				self.log_error(ex)
 
-	
+
 	def update_ui_system(self):
 		"""
 		Update the upper two-thirds of the screen with system stats collected by the timed collector
 		"""
-		
-		top = 0
-		bottom = self.height - self.bottom_height
-		left = 0
 
-		# Draw a black filled box to clear the image.
-		self.draw.rectangle((0, 0, self.width, bottom), fill=0)
+		if self.display_init:
+			top = 0
+			bottom = self.height - self.bottom_height
+			left = 0
 
-		try:
-			mem = self.system_stats['memory']
-			disk = self.system_stats['disk']
-			# Write four lines of text.
-			self.draw.text((left, top + 0), "IP: %s" % (self.system_stats['ip']), font=self.font, fill=255)
-			self.draw.text((left, top + 9), "Load: %s, %s, %s" % self.system_stats['load'], font=self.font, fill=255)
-			self.draw.text((left, top + 18), "Mem: %s/%s MB %s%%" % (int(mem.used/1048576), int(mem.total/1048576), mem.percent), font=self.font, fill=255)
-			self.draw.text((left, top + 27), "Disk: %s/%s GB %s%%" % (int(disk.used/1073741824), int((disk.used+disk.total)/1073741824), int(10000*disk.used/(disk.used+disk.free))/100), font=self.font, fill=255)
-		except:
-			self.draw.text((left, top + 9), "Gathering System Stats", font=self.font, fill=255)
+			# Draw a black filled box to clear the image.
+			self.draw.rectangle((0, 0, self.width, bottom), fill=0)
+
+			try:
+				mem = self.system_stats['memory']
+				disk = self.system_stats['disk']
+				# Write four lines of text.
+				self.draw.text((left, top + 0), "IP: %s" % (self.system_stats['ip']), font=self.font, fill=255)
+				self.draw.text((left, top + 9), "Load: %s, %s, %s" % self.system_stats['load'], font=self.font, fill=255)
+				self.draw.text((left, top + 18), "Mem: %s/%s MB %s%%" % (int(mem.used/1048576), int(mem.total/1048576), mem.percent), font=self.font, fill=255)
+				self.draw.text((left, top + 27), "Disk: %s/%s GB %s%%" % (int(disk.used/1073741824), int((disk.used+disk.total)/1073741824), int(10000*disk.used/(disk.used+disk.free))/100), font=self.font, fill=255)
+			except:
+				self.draw.text((left, top + 9), "Gathering System Stats", font=self.font, fill=255)
 
 	def update_ui_printer(self):
 		"""
 		Update the upper two-thirds of the screen with stats about the printer, such as temperatures
 		"""
-		
-		top = 0
-		bottom = self.height - self.bottom_height
-		left = 0
 
-		try:
-			self.draw.rectangle((0, 0, self.width, bottom), fill=0)
-			self.draw.text((left, top + 0), "Printer Temperatures", font=self.font, fill=255)
+		if self.display_init:
+			top = 0
+			bottom = self.height - self.bottom_height
+			left = 0
 
-			if self._printer.get_current_connection()[0] == "Closed":
-				self.draw.text((left, top + 9), "Head: no printer", font=self.font, fill=255)
-				self.draw.text((left, top + 18), " Bed: no printer", font=self.font, fill=255)
-			else:
-				temperatures = self._printer.get_current_temperatures()
-				tool = temperatures['tool0'] or None
-				bed = temperatures['bed'] or None
+			try:
+				self.draw.rectangle((0, 0, self.width, bottom), fill=0)
+				self.draw.text((left, top + 0), "Printer Temperatures", font=self.font, fill=255)
 
-				self.draw.text((left, top + 9), "Head: %s / %s ºC" % (tool['actual'], tool['target']), font=self.font, fill=255)
-				self.draw.text((left, top + 18), " Bed: %s / %s ºC" % (bed['actual'], bed['target']), font=self.font, fill=255)
-		except Exception as ex:
-			self.log_error(ex)
+				if self._printer.get_current_connection()[0] == "Closed":
+					self.draw.text((left, top + 9), "Head: no printer", font=self.font, fill=255)
+					self.draw.text((left, top + 18), " Bed: no printer", font=self.font, fill=255)
+				else:
+					temperatures = self._printer.get_current_temperatures()
+					tool = temperatures['tool0'] or None
+					bed = temperatures['bed'] or None
+
+					self.draw.text((left, top + 9), "Head: %s / %s ºC" % (tool['actual'], tool['target']), font=self.font, fill=255)
+					self.draw.text((left, top + 18), " Bed: %s / %s ºC" % (bed['actual'], bed['target']), font=self.font, fill=255)
+			except Exception as ex:
+				self.log_error(ex)
 
 	def update_ui_print(self, current_data):
 		"""
 		Update the upper two-thirds of the screen with information about the current ongoing print
 		"""
-		
-		top = 0
-		bottom = self.height - self.bottom_height
-		left = 0
 
-		try:
-			self.draw.rectangle((0, 0, self.width, bottom), fill=0)
-			self.draw.text((left, top + 0), "State: %s" % (self._printer.get_state_string()), font=self.font, fill=255)
+		if self.display_init:
+			top = 0
+			bottom = self.height - self.bottom_height
+			left = 0
 
-			if current_data['job']['file']['name']:
-				file_name = current_data['job']['file']['name']
-				self.draw.text((left, top + 9), "File: %s" % (file_name), font=self.font, fill=255)
+			try:
+				self.draw.rectangle((0, 0, self.width, bottom), fill=0)
+				self.draw.text((left, top + 0), "State: %s" % (self._printer.get_state_string()), font=self.font, fill=255)
 
-				print_time = self._get_time_from_seconds(current_data['progress']['printTime'] or 0)
-				self.draw.text((left, top + 18), "Time: %s" % (print_time), font=self.font, fill=255)
+				if current_data['job']['file']['name']:
+					file_name = current_data['job']['file']['name']
+					self.draw.text((left, top + 9), "File: %s" % (file_name), font=self.font, fill=255)
 
-				filament = current_data['job']['filament']['tool0'] if "tool0" in current_data['job']['filament'] else current_data['job']['filament']
-				filament_length = self.float_count_formatter((filament['length'] or 0) / 1000, 3)
-				filament_mass = self.float_count_formatter(filament['volume'] or 0, 3)
-				self.draw.text((left, top + 27), "Filament: %sm/%scm3" % (filament_length, filament_mass), font=self.font, fill=255)
-			else:
-				self.draw.text((left, top + 18), "Waiting for file...", font=self.font, fill=255)
-		except Exception as ex:
-			self.log_error(ex)
-	
+					print_time = self._get_time_from_seconds(current_data['progress']['printTime'] or 0)
+					self.draw.text((left, top + 18), "Time: %s" % (print_time), font=self.font, fill=255)
+
+					filament = current_data['job']['filament']['tool0'] if "tool0" in current_data['job']['filament'] else current_data['job']['filament']
+					filament_length = self.float_count_formatter((filament['length'] or 0) / 1000, 3)
+					filament_mass = self.float_count_formatter(filament['volume'] or 0, 3)
+					self.draw.text((left, top + 27), "Filament: %sm/%scm3" % (filament_length, filament_mass), font=self.font, fill=255)
+				else:
+					self.draw.text((left, top + 18), "Waiting for file...", font=self.font, fill=255)
+			except Exception as ex:
+				self.log_error(ex)
+
 	def update_ui_bottom(self, current_data):
 		"""
 		Update the bottom third of the screen with persistent information about the current print
 		"""
-		
-		top = self.height - self.bottom_height
-		bottom = self.height
-		left = 0
 
-		try:
-			# Clear area
-			self.draw.rectangle((0, top, self.width, bottom), fill=0)
+		if self.display_init:
+			top = self.height - self.bottom_height
+			bottom = self.height
+			left = 0
 
-			if self._printer.get_current_connection()[0] == "Closed":
-				# Printer isn't connected
-				display_string = "Printer Not Connected"
-				text_width = self.draw.textsize(display_string, font=self.font)[0]
-				self.draw.text((self.width / 2 - text_width / 2, top + 6), display_string, font=self.font, fill=255)
-			
-			elif current_data['state']['flags']['paused'] or current_data['state']['flags']['pausing']:
-				# Printer paused
-				display_string = "Paused"
-				text_width = self.draw.textsize(display_string, font=self.font)[0]
-				self.draw.text((self.width / 2 - text_width / 2, top + 6), display_string, font=self.font, fill=255)
+			try:
+				# Clear area
+				self.draw.rectangle((0, top, self.width, bottom), fill=0)
 
-			elif current_data['state']['flags']['cancelling']:
-				# Printer paused
-				display_string = "Cancelling"
-				text_width = self.draw.textsize(display_string, font=self.font)[0]
-				self.draw.text((self.width / 2 - text_width / 2, top + 6), display_string, font=self.font, fill=255)
+				if self._printer.get_current_connection()[0] == "Closed":
+					# Printer isn't connected
+					display_string = "Printer Not Connected"
+					text_width = self.draw.textsize(display_string, font=self.font)[0]
+					self.draw.text((self.width / 2 - text_width / 2, top + 6), display_string, font=self.font, fill=255)
 
-			elif current_data['state']['flags']['ready'] and (current_data['progress']['completion'] or 0) < 100:
-				# Printer connected, not printing
-				display_string = "Waiting For Job"
-				text_width = self.draw.textsize(display_string, font=self.font)[0]
-				self.draw.text((self.width / 2 - text_width / 2, top + 6), display_string, font=self.font, fill=255)
+				elif current_data['state']['flags']['paused'] or current_data['state']['flags']['pausing']:
+					# Printer paused
+					display_string = "Paused"
+					text_width = self.draw.textsize(display_string, font=self.font)[0]
+					self.draw.text((self.width / 2 - text_width / 2, top + 6), display_string, font=self.font, fill=255)
 
-			else:
-				percentage = int(current_data['progress']['completion'] or 0)
-				time_left = current_data['progress']['printTimeLeft'] or 0
+				elif current_data['state']['flags']['cancelling']:
+					# Printer paused
+					display_string = "Cancelling"
+					text_width = self.draw.textsize(display_string, font=self.font)[0]
+					self.draw.text((self.width / 2 - text_width / 2, top + 6), display_string, font=self.font, fill=255)
 
-				# Progress bar
-				self.draw.rectangle((0, top + 2, self.width - 1, top + 10), fill=0, outline=255, width=1)
-				bar_width = int((self.width - 5) * percentage / 100)
-				self.draw.rectangle((2, top + 4, bar_width, top + 8), fill=255, outline=255, width=1)
+				elif current_data['state']['flags']['ready'] and (current_data['progress']['completion'] or 0) < 100:
+					# Printer connected, not printing
+					display_string = "Waiting For Job"
+					text_width = self.draw.textsize(display_string, font=self.font)[0]
+					self.draw.text((self.width / 2 - text_width / 2, top + 6), display_string, font=self.font, fill=255)
 
-				# Percentage and ETA
-				self.draw.text((0, top + 12), "%s%%" % (percentage), font=self.font, fill=255)
-				eta = time.strftime(self._eta_strftime, time.localtime(time.time() + time_left))
-				eta_width = self.draw.textsize(eta, font=self.font)[0]
-				self.draw.text((self.width - eta_width, top + 12), eta, font=self.font, fill=255)
-		except Exception as ex:
-			self.log_error(ex)
+				else:
+					percentage = int(current_data['progress']['completion'] or 0)
+					time_left = current_data['progress']['printTimeLeft'] or 0
+
+					# Progress bar
+					self.draw.rectangle((0, top + 2, self.width - 1, top + 10), fill=0, outline=255, width=1)
+					bar_width = int((self.width - 5) * percentage / 100)
+					self.draw.rectangle((2, top + 4, bar_width, top + 8), fill=255, outline=255, width=1)
+
+					# Percentage and ETA
+					self.draw.text((0, top + 12), "%s%%" % (percentage), font=self.font, fill=255)
+					eta = time.strftime(self.date_format, time.localtime(time.time() + time_left))
+					eta_width = self.draw.textsize(eta, font=self.font)[0]
+					self.draw.text((self.width - eta_width, top + 12), eta, font=self.font, fill=255)
+			except Exception as ex:
+				self.log_error(ex)
 
 	# Taken from tpmullan/OctoPrint-DetailedProgress
 	def _get_time_from_seconds(self, seconds):
@@ -540,7 +782,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 		Helper function for more complete logging on exceptions
 		"""
-		
+
 		template = "An exception of type {0} occurred on {1}. Arguments: {2!r}"
 		message = template.format(type(ex).__name__, inspect.currentframe().f_code.co_name, ex.args)
 		self._logger.warn(message)
