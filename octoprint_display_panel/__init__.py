@@ -41,11 +41,27 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
                           octoprint.plugin.TemplatePlugin,
                           octoprint.plugin.SettingsPlugin):
 
-	system_stats = {}
-
-	_cancel_timer = None
+	_bounce = 0
 	_cancel_requested_at = 0
+	_cancel_timer = None
+	_date_format = ""
+	_display_init = False
 	_etl_format = "{hours:02d}h {minutes:02d}m {seconds:02d}s"
+	_gpio_init = False
+	_image_rotate = False
+	_last_bounce = 0
+	_last_i2c_address = ""
+	_last_image_rotate = False
+	_last_pin_cancel = -1
+	_last_pin_mode = -1
+	_last_pin_pause = -1
+	_last_pin_play = -1
+	_pin_cancel = -1
+	_pin_mode = -1
+	_pin_pause = -1
+	_pin_play = -1
+	_screen_mode = ScreenModes.SYSTEM
+	_system_stats = {}
 
 	##~~ StartupPlugin mixin
 
@@ -83,7 +99,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 		# Connectivity
 		if event == Events.DISCONNECTED:
-			self.screen_mode = ScreenModes.SYSTEM
+			self._screen_mode = ScreenModes.SYSTEM
 
 		if event in (Events.CONNECTED, Events.CONNECTING, Events.CONNECTIVITY_CHANGED,
 								 Events.DISCONNECTING):
@@ -91,7 +107,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 		# Print start display
 		if event == Events.PRINT_STARTED:
-			self.screen_mode = ScreenModes.PRINT
+			self._screen_mode = ScreenModes.PRINT
 			self.update_ui()
 
 		# Print end states
@@ -140,18 +156,27 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Prepare variables for setting modification detection
 		"""
 
-		self.display_init = False
-		self.gpio_init = False
-		self.i2c_devices = []
-		self.last_image_rotate = False
-		self.last_bounce = self.bounce
-		self.last_date_format = self.date_format
-		self.last_i2c_address = self.i2c_address
-		self.last_pin_cancel = self.pin_cancel
-		self.last_pin_mode = self.pin_mode
-		self.last_pin_pause = self.pin_pause
-		self.last_pin_play = self.pin_play
-		self.screen_mode = ScreenModes.SYSTEM
+		self._bounce = int(self._settings.get(["bounce"]))
+		self._date_format = str(self._settings.get(["date_format"]))
+		self._display_init = False
+		self._gpio_init = False
+		self._image_rotate = bool(self._settings.get(["image_rotate"]))
+		self._pin_cancel = int(self._settings.get(["pin_cancel"]))
+		self._pin_mode = int(self._settings.get(["pin_mode"]))
+		self._pin_pause = int(self._settings.get(["pin_pause"]))
+		self._pin_play = int(self._settings.get(["pin_play"]))
+		self._screen_mode = ScreenModes.SYSTEM
+		if self._settings.get(["i2c_address"])[0:2] == "0x":
+			self._i2c_address = hex(int(self._settings.get(["i2c_address"]),base=16))
+		else:
+			self._i2c_address = hex(int("0x" + self._settings.get(["i2c_address"]),base=16))
+		self._last_bounce = self._bounce
+		self._last_i2c_address = self._i2c_address
+		self._last_image_rotate = False
+		self._last_pin_cancel = self._pin_cancel
+		self._last_pin_mode = self._pin_mode
+		self._last_pin_pause = self._pin_pause
+		self._last_pin_play = self._pin_play
 
 	def get_settings_defaults(self):
 		"""
@@ -175,100 +200,75 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 
 		octoprint.plugin.SettingsPlugin.on_settings_save(self, data)
+		self._bounce = int(self._settings.get(["bounce"]))
+		self._date_format = str(self._settings.get(["date_format"]))
+		self._image_rotate = bool(self._settings.get(["image_rotate"]))
+		self._pin_cancel = int(self._settings.get(["pin_cancel"]))
+		self._pin_mode = int(self._settings.get(["pin_mode"]))
+		self._pin_pause = int(self._settings.get(["pin_pause"]))
+		self._pin_play = int(self._settings.get(["pin_play"]))
+		if self._settings.get(["i2c_address"])[0:2] == "0x":
+			self._i2c_address = hex(int(self._settings.get(["i2c_address"]),base=16))
+		else:
+			self._i2c_address = hex(int("0x" + self._settings.get(["i2c_address"]),base=16))
 		pins_updated = 0
 		try:
-			if self.i2c_address.lower() != self.last_i2c_address.lower() or \
-			self.image_rotate != self.last_image_rotate:
+			if self._i2c_address.lower() != self._last_i2c_address.lower() or \
+			self._image_rotate != self._last_image_rotate:
 				self.clear_display()
-				self.display_init = False
-				self.last_date_format = self.date_format
-				self.last_i2c_address = self.i2c_address
-				self.last_image_rotate = self.image_rotate
+				self._display_init = False
+				self._last_i2c_address = self._i2c_address
+				self._last_image_rotate = self._image_rotate
 				self.setup_display()
 				self.clear_display()
 				self.check_system_stats()
 				self.start_system_timer()
-				self.screen_mode = ScreenModes.SYSTEM
+				self._screen_mode = ScreenModes.SYSTEM
 				self.update_ui()
 
-			if self.pin_cancel != self.last_pin_cancel:
+			if self._pin_cancel != self._last_pin_cancel:
 				pins_updated = pins_updated + 1
-				self.clean_single_gpio(self.last_pin_cancel)
-			if self.pin_mode != self.last_pin_mode:
+				self.clean_single_gpio(self._last_pin_cancel)
+			if self._pin_mode != self._last_pin_mode:
 				pins_updated = pins_updated + 2
-				self.clean_single_gpio(self.last_pin_mode)
-			if self.pin_pause != self.last_pin_pause:
+				self.clean_single_gpio(self._last_pin_mode)
+			if self._pin_pause != self._last_pin_pause:
 				pins_updated = pins_updated + 4
-				self.clean_single_gpio(self.last_pin_pause)
-			if self.pin_play != self.last_pin_play:
+				self.clean_single_gpio(self._last_pin_pause)
+			if self._pin_play != self._last_pin_play:
 				pins_updated = pins_updated + 8
-				self.clean_single_gpio(self.last_pin_play)
+				self.clean_single_gpio(self._last_pin_play)
 
-			self.gpio_init = False
+			self._gpio_init = False
 			self.setup_gpio()
 
-			if pins_updated == (pow(2, 4) - 1) or self.bounce != self.last_bounce:
+			if pins_updated == (pow(2, 4) - 1) or self._bounce != self._last_bounce:
 				self.configure_gpio()
 				pins_updated = 0
 
 			if pins_updated >= pow(2, 3):
-				self.configure_single_gpio(self.pin_play)
+				self.configure_single_gpio(self._pin_play)
 				pins_updated = pins_updated - pow(2, 3)
 			if pins_updated >= pow(2, 2):
-				self.configure_single_gpio(self.pin_pause)
+				self.configure_single_gpio(self._pin_pause)
 				pins_updated = pins_updated - pow(2, 2)
 			if pins_updated >= pow(2, 1):
-				self.configure_single_gpio(self.pin_mode)
+				self.configure_single_gpio(self._pin_mode)
 				pins_updated = pins_updated - pow(2, 1)
 			if pins_updated >= pow(2, 0):
-				self.configure_single_gpio(self.pin_cancel)
+				self.configure_single_gpio(self._pin_cancel)
 				pins_updated = pins_updated - pow(2, 0)
 			if pins_updated > 0:
 				self.log_error("Something went wrong counting updated GPIO pins")
 
-			self.last_bounce = self.bounce
-			self.last_pin_cancel = self.pin_cancel
-			self.last_pin_mode = self.pin_mode
-			self.last_pin_play = self.pin_play
-			self.last_pin_pause = self.pin_pause
+			self._last_bounce = self._bounce
+			self._last_pin_cancel = self._pin_cancel
+			self._last_pin_mode = self._pin_mode
+			self._last_pin_play = self._pin_play
+			self._last_pin_pause = self._pin_pause
 		except Exception as ex:
 			self.log_error(ex)
 			pass
-
-	@property
-	def bounce(self):
-		return int(self._settings.get(["bounce"]))
-
-	@property
-	def date_format(self):
-		return str(self._settings.get(["date_format"]))
-
-	@property
-	def i2c_address(self):
-		if self._settings.get(["i2c_address"])[0:2] == "0x":
-			return hex(int(self._settings.get(["i2c_address"]),base=16))
-		else:
-			return hex(int("0x" + self._settings.get(["i2c_address"]),base=16))
-
-	@property
-	def image_rotate(self):
-		return bool(self._settings.get(["image_rotate"]))
-
-	@property
-	def pin_cancel(self):
-		return int(self._settings.get(["pin_cancel"]))
-
-	@property
-	def pin_mode(self):
-		return int(self._settings.get(["pin_mode"]))
-
-	@property
-	def pin_pause(self):
-		return int(self._settings.get(["pin_pause"]))
-
-	@property
-	def pin_play(self):
-		return int(self._settings.get(["pin_play"]))
 
 	##~~ Softwareupdate hook
 
@@ -297,19 +297,6 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		)
 
 	##~~ Helpers
-
-	def get_i2c_devices(self):
-		"""
-		Function to detect all connected i2c devices
-		"""
-
-		p = subprocess.Popen(['i2cdetect', '-y','1'],stdout=subprocess.PIPE,)
-		for i in range(0,9):
-			line = str(p.stdout.readline())
-			entries = line.split()
-			for entry in entries:
-				if len(entry) == 2 and entry.isalnum():
-					self.i2c_devices.append(hex(int("0x" + entry,base=16)))
 
 	def bcm2board(self, bcm_pin):
 		"""
@@ -344,17 +331,17 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		performant and not block.
 		"""
 
-		if self.screen_mode == ScreenModes.SYSTEM:
+		if self._screen_mode == ScreenModes.SYSTEM:
 			s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 			s.connect(("8.8.8.8", 80))
-			self.system_stats['ip'] = s.getsockname()[0]
+			self._system_stats['ip'] = s.getsockname()[0]
 			s.close()
-			self.system_stats['load'] = psutil.getloadavg()
-			self.system_stats['memory'] = psutil.virtual_memory()
-			self.system_stats['disk'] = shutil.disk_usage('/') # disk percentage = 100 * used / (used + free)
+			self._system_stats['load'] = psutil.getloadavg()
+			self._system_stats['memory'] = psutil.virtual_memory()
+			self._system_stats['disk'] = shutil.disk_usage('/') # disk percentage = 100 * used / (used + free)
 
 			self.update_ui()
-		elif self.screen_mode == ScreenModes.PRINTER:
+		elif self._screen_mode == ScreenModes.PRINTER:
 			# Just update the UI, the printer mode will take care of itself
 			self.update_ui()
 
@@ -363,23 +350,21 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Intialize display
 		"""
 
-		self.get_i2c_devices()
-		if self.i2c_address.lower() in self.i2c_devices:
-			try:
-				self.i2c = busio.I2C(SCL, SDA)
-				self.disp = adafruit_ssd1306.SSD1306_I2C(128, 64, self.i2c, addr=int(self.i2c_address,0))
-				self._logger.info("Setting display to I2C address %s", self.i2c_address)
-				self.display_init = True
-				self.font = ImageFont.load_default()
-				self.width = self.disp.width
-				self.height = self.disp.height
-				self.image = Image.new("1", (self.width, self.height))
-				self.draw = ImageDraw.Draw(self.image)
-				self.bottom_height = 22
-				self.screen_mode = ScreenModes.SYSTEM
-			except Exception as ex:
-				self.log_error(ex)
-				pass
+		try:
+			self.i2c = busio.I2C(SCL, SDA)
+			self.disp = adafruit_ssd1306.SSD1306_I2C(128, 64, self.i2c, addr=int(self._i2c_address,0))
+			self._logger.info("Setting display to I2C address %s", self._i2c_address)
+			self._display_init = True
+			self.font = ImageFont.load_default()
+			self.width = self.disp.width
+			self.height = self.disp.height
+			self.image = Image.new("1", (self.width, self.height))
+			self.draw = ImageDraw.Draw(self.image)
+			self.bottom_height = 22
+			self._screen_mode = ScreenModes.SYSTEM
+		except Exception as ex:
+			self.log_error(ex)
+			pass
 
 	def setup_gpio(self):
 		"""
@@ -388,16 +373,16 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 
 		self.BCM_PINS = {
-			self.pin_mode: 'mode',
-			self.pin_cancel: 'cancel',
-			self.pin_play: 'play',
-			self.pin_pause: 'pause'
+			self._pin_mode: 'mode',
+			self._pin_cancel: 'cancel',
+			self._pin_play: 'play',
+			self._pin_pause: 'pause'
 			}
 		self.BOARD_PINS = {
-			self.bcm2board(self.pin_mode) : 'mode',
-			self.bcm2board(self.pin_cancel): 'cancel',
-			self.bcm2board(self.pin_play): 'play',
-			self.bcm2board(self.pin_pause): 'pause'
+			self.bcm2board(self._pin_mode) : 'mode',
+			self.bcm2board(self._pin_cancel): 'cancel',
+			self.bcm2board(self._pin_play): 'play',
+			self.bcm2board(self._pin_pause): 'pause'
 			}
 		self.input_pinset = self.BCM_PINS
 
@@ -413,7 +398,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 				self.input_pinset = self.BOARD_PINS
 				self._logger.info("GPIO mode was already set, adapting to use BOARD numbering")
 			GPIO.setwarnings(False)
-			self.gpio_init = True
+			self._gpio_init = True
 		except Exception as ex:
 			self.log_error(ex)
 			pass
@@ -423,7 +408,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Setup the GPIO pins to handle the buttons as inputs with built-in pull-up resistors
 		"""
 
-		if self.gpio_init:
+		if self._gpio_init:
 			for gpio_pin in self.input_pinset:
 				self.configure_single_gpio(gpio_pin)
 
@@ -432,13 +417,13 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Setup the GPIO pins to handle the buttons as inputs with built-in pull-up resistors
 		"""
 
-		if self.gpio_init:
+		if self._gpio_init:
 			try:
 				if gpio_pin != -1:
 					GPIO.setup(gpio_pin, GPIO.IN, GPIO.PUD_UP)
 					GPIO.remove_event_detect(gpio_pin)
 					self._logger.info("Adding GPIO event detect on pin %s with edge: FALLING", gpio_pin)
-					GPIO.add_event_detect(gpio_pin, GPIO.FALLING, callback=self.handle_gpio_event, bouncetime=self.bounce)
+					GPIO.add_event_detect(gpio_pin, GPIO.FALLING, callback=self.handle_gpio_event, bouncetime=self._bounce)
 			except Exception as ex:
 				self.log_error(ex)
 
@@ -447,7 +432,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Remove event detection and clean up for all pins (`mode`, `cancel`, `play` and `pause`)
 		"""
 
-		if self.gpio_init:
+		if self._gpio_init:
 			for gpio_pin in self.input_pinset:
 				self.clean_single_gpio(gpio_pin)
 
@@ -456,7 +441,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Remove event detection and clean up for all pins (`mode`, `cancel`, `play` and `pause`)
 		"""
 
-		if self.gpio_init:
+		if self._gpio_init:
 			if gpio_pin!=-1:
 				try:
 					GPIO.remove_event_detect(gpio_pin)
@@ -499,7 +484,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Go to the next screen mode
 		"""
 
-		self.screen_mode = self.screen_mode.next()
+		self._screen_mode = self._screen_mode.next()
 		self.update_ui()
 
 	def try_cancel(self):
@@ -562,7 +547,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Clear the OLED display completely. Used at startup and shutdown to ensure a blank screen
 		"""
 
-		if self.display_init:
+		if self._display_init:
 			self.disp.fill(0)
 			self.disp.show()
 
@@ -571,23 +556,23 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Update the on-screen UI based on the current screen mode and printer status
 		"""
 
-		if self.display_init:
+		if self._display_init:
 			try:
 				current_data = self._printer.get_current_data()
 
 				if self._cancel_timer is not None and current_data['state']['flags']['cancelling'] is False:
 					self.update_ui_cancel_confirm()
-				elif self.screen_mode == ScreenModes.SYSTEM:
+				elif self._screen_mode == ScreenModes.SYSTEM:
 					self.update_ui_system()
-				elif self.screen_mode == ScreenModes.PRINTER:
+				elif self._screen_mode == ScreenModes.PRINTER:
 					self.update_ui_printer()
-				elif self.screen_mode == ScreenModes.PRINT:
+				elif self._screen_mode == ScreenModes.PRINT:
 					self.update_ui_print(current_data)
 
 				self.update_ui_bottom(current_data)
 
 				# Display image.
-				if self.image_rotate:
+				if self._image_rotate:
 					self.disp.image(self.image.rotate(angle=180))
 				else:
 					self.disp.image(self.image)
@@ -604,7 +589,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		bottom = self.height - self.bottom_height
 		left = 0
 
-		if self.display_init:
+		if self._display_init:
 			try:
 				self.draw.rectangle((0, 0, self.width, bottom), fill=0)
 
@@ -629,7 +614,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Update the upper two-thirds of the screen with system stats collected by the timed collector
 		"""
 
-		if self.display_init:
+		if self._display_init:
 			top = 0
 			bottom = self.height - self.bottom_height
 			left = 0
@@ -638,11 +623,11 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			self.draw.rectangle((0, 0, self.width, bottom), fill=0)
 
 			try:
-				mem = self.system_stats['memory']
-				disk = self.system_stats['disk']
+				mem = self._system_stats['memory']
+				disk = self._system_stats['disk']
 				# Write four lines of text.
-				self.draw.text((left, top + 0), "IP: %s" % (self.system_stats['ip']), font=self.font, fill=255)
-				self.draw.text((left, top + 9), "Load: %s, %s, %s" % self.system_stats['load'], font=self.font, fill=255)
+				self.draw.text((left, top + 0), "IP: %s" % (self._system_stats['ip']), font=self.font, fill=255)
+				self.draw.text((left, top + 9), "Load: %s, %s, %s" % self._system_stats['load'], font=self.font, fill=255)
 				self.draw.text((left, top + 18), "Mem: %s/%s MB %s%%" % (int(mem.used/1048576), int(mem.total/1048576), mem.percent), font=self.font, fill=255)
 				self.draw.text((left, top + 27), "Disk: %s/%s GB %s%%" % (int(disk.used/1073741824), int((disk.used+disk.total)/1073741824), int(10000*disk.used/(disk.used+disk.free))/100), font=self.font, fill=255)
 			except:
@@ -653,7 +638,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Update the upper two-thirds of the screen with stats about the printer, such as temperatures
 		"""
 
-		if self.display_init:
+		if self._display_init:
 			top = 0
 			bottom = self.height - self.bottom_height
 			left = 0
@@ -680,7 +665,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Update the upper two-thirds of the screen with information about the current ongoing print
 		"""
 
-		if self.display_init:
+		if self._display_init:
 			top = 0
 			bottom = self.height - self.bottom_height
 			left = 0
@@ -710,7 +695,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Update the bottom third of the screen with persistent information about the current print
 		"""
 
-		if self.display_init:
+		if self._display_init:
 			top = self.height - self.bottom_height
 			bottom = self.height
 			left = 0
@@ -754,7 +739,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 					# Percentage and ETA
 					self.draw.text((0, top + 12), "%s%%" % (percentage), font=self.font, fill=255)
-					eta = time.strftime(self.date_format, time.localtime(time.time() + time_left))
+					eta = time.strftime(self._date_format, time.localtime(time.time() + time_left))
 					eta_width = self.draw.textsize(eta, font=self.font)[0]
 					self.draw.text((self.width - eta_width, top + 12), eta, font=self.font, fill=255)
 			except Exception as ex:

@@ -107,7 +107,10 @@
     <div class="control-group">
         <label class="control-label">{{ _('Display address') }}</label>
         <div class="controls data-toggle="tooltip" title="{{ _('Which I2C address to use for display.') }}"">
-			<input type="text" class="input-block-level" data-bind="value: settings.plugins.display_panel.i2c_address">
+			<select data-bind="value: settings.plugins.display_panel.i2c_address">
+				<option value="0x3c">0x3c</option>
+				<option value="0x3d">0x3d</option>
+			</select>
 			<div class="help-block">{{ _('Which I2C address to use for display. Normally "0x3c" but can depend on actual model. Can be checked using "i2cdetect -y 1" on console.') }}</div>
 		</div>
 	</div>
