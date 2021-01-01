@@ -126,6 +126,13 @@
 			<div class="help-block">{{ _('When press the switches, wait for this amount of time to wait for the signal to stabilize.') }}</div>
         </div>
     </div>
+    <div class="control-group">
+        <label class="control-label">{{ _('Rotate display 180&deg;:') }}</label>
+        <div class="controls" data-toggle="tooltip" title="{{ _('Rotate image on display by 180 degrees.') }}">
+            <input class="input-checkbox" type="checkbox" data-bind="checked: settings.plugins.display_panel.image_rotate">
+			<div class="help-block">{{ _('Rotate image on display by 180 degrees.') }}</div>
+        </div>
+    </div>
 
 	<div>
 		<a target="_blank" href="https://www.raspberrypi.org/documentation/usage/gpio/">{{ _('Raspberry Pi GPIO Pinout') }}</a>

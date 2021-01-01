@@ -131,7 +131,6 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		TemplatePlugin lifecycle hook, called to get templated settings
 		"""
 
-		self.get_i2c_devices()
 		return [dict(type="settings", custom_bindings=False)]
 
 	##~~ SettingsPlugin mixin
@@ -144,6 +143,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		self.display_init = False
 		self.gpio_init = False
 		self.i2c_devices = []
+		self.last_image_rotate = False
 		self.last_bounce = self.bounce
 		self.last_date_format = self.date_format
 		self.last_i2c_address = self.i2c_address
@@ -162,10 +162,11 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			bounce			= 250,  # Debounce 250ms
 			date_format		= "%-m/%d %-I:%M%p", # Default is month/day hour:minute + AM/PM
 			i2c_address		= "0x3c", # Default is hex address 0x3c
-			pin_cancel		= 22,   # Default is BCM 22
-			pin_mode		= 4,    # Default is BCM 4
-			pin_pause		= 27,   # Default is BCM 27
-			pin_play		= 17,   # Default is BCM 17
+			image_rotate	= False,# Default if False (no rotation)
+			pin_cancel		= -1,   # Default is diabled
+			pin_mode		= -1,   # Default is diabled
+			pin_pause		= -1,   # Default is diabled
+			pin_play		= -1,   # Default is diabled
 		)
 
 	def on_settings_save(self, data):
@@ -176,11 +177,13 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		octoprint.plugin.SettingsPlugin.on_settings_save(self, data)
 		pins_updated = 0
 		try:
-			if self.i2c_address.lower() != self.last_i2c_address.lower():
+			if self.i2c_address.lower() != self.last_i2c_address.lower() or \
+			self.image_rotate != self.last_image_rotate:
 				self.clear_display()
 				self.display_init = False
 				self.last_date_format = self.date_format
 				self.last_i2c_address = self.i2c_address
+				self.last_image_rotate = self.image_rotate
 				self.setup_display()
 				self.clear_display()
 				self.check_system_stats()
@@ -246,6 +249,10 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			return hex(int(self._settings.get(["i2c_address"]),base=16))
 		else:
 			return hex(int("0x" + self._settings.get(["i2c_address"]),base=16))
+
+	@property
+	def image_rotate(self):
+		return bool(self._settings.get(["image_rotate"]))
 
 	@property
 	def pin_cancel(self):
@@ -357,7 +364,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 
 		self.get_i2c_devices()
-		if self.i2c_address.lower in self.i2c_devices:
+		if self.i2c_address.lower() in self.i2c_devices:
 			try:
 				self.i2c = busio.I2C(SCL, SDA)
 				self.disp = adafruit_ssd1306.SSD1306_I2C(128, 64, self.i2c, addr=int(self.i2c_address,0))
@@ -580,7 +587,10 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 				self.update_ui_bottom(current_data)
 
 				# Display image.
-				self.disp.image(self.image)
+				if self.image_rotate:
+					self.disp.image(self.image.rotate(angle=180))
+				else:
+					self.disp.image(self.image)
 				self.disp.show()
 			except Exception as ex:
 				self.log_error(ex)
