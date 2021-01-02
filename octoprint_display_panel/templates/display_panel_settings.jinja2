@@ -1,8 +1,8 @@
 <h4>{{ _('Display Panel') }}</h4>
 <form class="form-horizontal">
     <div class="control-group">
-        <label class="control-label">{{ _('Pin Mode:') }}</label>
-        <div class="controls" data-toggle="tooltip" title="{{ _('Which Raspberry Pi GPIO pin (BCM Mode) your mode switch is attached to.') }}">
+        <label class="control-label">{{ _('Mode Pin:') }}</label>
+        <div class="controls" data-toggle="tooltip" title="{{ _('Which raspberry pi GPIO pin (BCM mode) your mode switch is attached to.') }}">
 			<select data-bind="value: settings.plugins.display_panel.pin_mode">
 				<option value="-1">Disabled</option>
 				<option value="4">GPIO 4</option>
@@ -23,12 +23,12 @@
 				<option value="26">GPIO 26</option>
 				<option value="27">GPIO 27</option>
 			</select>
-			<div class="help-block">{{ _('Which Raspberry Pi GPIO pin your mode switch is attached to.') }}</div>
+			<div class="help-block">{{ _('Which raspberry pi GPIO pin your mode switch is attached to.') }}</div>
         </div>
     </div>
     <div class="control-group">
-        <label class="control-label">{{ _('Pin Cancel:') }}</label>
-        <div class="controls" data-toggle="tooltip" title="{{ _('Which Raspberry Pi GPIO pin (BCM Mode) your cancel switch is attached to.') }}">
+        <label class="control-label">{{ _('Cancel Pin:') }}</label>
+        <div class="controls" data-toggle="tooltip" title="{{ _('Which raspberry pi GPIO pin (BCM mode) your cancel switch is attached to.') }}">
 			<select data-bind="value: settings.plugins.display_panel.pin_cancel">
 				<option value="-1">Disabled</option>
 				<option value="4">GPIO 4</option>
@@ -49,12 +49,12 @@
 				<option value="26">GPIO 26</option>
 				<option value="27">GPIO 27</option>
 			</select>
-			<div class="help-block">{{ _('Which Raspberry Pi GPIO pin your cancel switch is attached to.') }}</div>
+			<div class="help-block">{{ _('Which raspberry pi GPIO pin your cancel switch is attached to.') }}</div>
         </div>
     </div>
     <div class="control-group">
-        <label class="control-label">{{ _('Pin Play:') }}</label>
-        <div class="controls" data-toggle="tooltip" title="{{ _('Which Raspberry Pi GPIO pin (BCM Mode) your play switch is attached to.') }}">
+        <label class="control-label">{{ _('Play Pin:') }}</label>
+        <div class="controls" data-toggle="tooltip" title="{{ _('Which raspberry pi GPIO pin (BCM mode) your play switch is attached to.') }}">
 			<select data-bind="value: settings.plugins.display_panel.pin_play">
 				<option value="-1">Disabled</option>
 				<option value="4">GPIO 4</option>
@@ -75,12 +75,12 @@
 				<option value="26">GPIO 26</option>
 				<option value="27">GPIO 27</option>
 			</select>
-			<div class="help-block">{{ _('Which Raspberry Pi GPIO pin your play switch is attached to.') }}</div>
+			<div class="help-block">{{ _('Which raspberry pi GPIO pin your play switch is attached to.') }}</div>
         </div>
     </div>
     <div class="control-group">
-        <label class="control-label">{{ _('Pin Pause:') }}</label>
-        <div class="controls" data-toggle="tooltip" title="{{ _('Which Raspberry Pi GPIO pin (BCM Mode) your pause switch is attached to.') }}">
+        <label class="control-label">{{ _('Pause Pin:') }}</label>
+        <div class="controls" data-toggle="tooltip" title="{{ _('Which raspberry pi GPIO pin (BCM mode) your pause switch is attached to.') }}">
 			<select data-bind="value: settings.plugins.display_panel.pin_pause">
 				<option value="-1">Disabled</option>
 				<option value="4">GPIO 4</option>
@@ -101,7 +101,7 @@
 				<option value="26">GPIO 26</option>
 				<option value="27">GPIO 27</option>
 			</select>
-			<div class="help-block">{{ _('Which Raspberry Pi GPIO pin your pause switch is attached to.') }}</div>
+			<div class="help-block">{{ _('Which raspberry pi GPIO pin your pause switch is attached to.') }}</div>
         </div>
     </div>
     <div class="control-group">
@@ -118,7 +118,7 @@
         <label class="control-label">{{ _('Date format') }}</label>
         <div class="controls data-toggle="tooltip" title="{{ _('How to format ETA.') }}"">
             <input type="text" class="input-block-level" data-bind="value: settings.plugins.display_panel.date_format">
-			<div class="help-block">{{ _('How to format ETA on print screen. Format according to Python\'s strftime directives.') }}</div>
+			<div class="help-block">{{ _('How to format ETA on print screen. Format according to python\'s strftime directives.') }}</div>
         </div>
     </div>
     <div class="control-group">
@@ -138,7 +138,7 @@
     </div>
 
 	<div>
-		<a target="_blank" href="https://www.raspberrypi.org/documentation/usage/gpio/">{{ _('Raspberry Pi GPIO Pinout') }}</a>
+		<a target="_blank" href="https://www.raspberrypi.org/documentation/usage/gpio/">{{ _('Raspberry pi GPIO pinout') }}</a>
 	</div>
 
 	<div>

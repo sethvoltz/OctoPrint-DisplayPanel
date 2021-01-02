@@ -12,8 +12,6 @@ import octoprint.plugin
 from octoprint.events import eventManager, Events
 from octoprint.util import RepeatedTimer
 import time
-import os
-import subprocess
 from enum import Enum
 from board import SCL, SDA
 import busio
@@ -41,12 +39,13 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
                           octoprint.plugin.TemplatePlugin,
                           octoprint.plugin.SettingsPlugin):
 
+	_bottom_height = 22
 	_bounce = 0
 	_cancel_requested_at = 0
 	_cancel_timer = None
-	_date_format = ""
 	_display_init = False
 	_etl_format = "{hours:02d}h {minutes:02d}m {seconds:02d}s"
+	_eta_strftime = ""
 	_gpio_init = False
 	_image_rotate = False
 	_last_bounce = 0
@@ -157,8 +156,8 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 
 		self._bounce = int(self._settings.get(["bounce"]))
-		self._date_format = str(self._settings.get(["date_format"]))
 		self._display_init = False
+		self._eta_strftime = str(self._settings.get(["eta_strftime"]))
 		self._gpio_init = False
 		self._image_rotate = bool(self._settings.get(["image_rotate"]))
 		self._pin_cancel = int(self._settings.get(["pin_cancel"]))
@@ -185,7 +184,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 		return dict(
 			bounce			= 250,  # Debounce 250ms
-			date_format		= "%-m/%d %-I:%M%p", # Default is month/day hour:minute + AM/PM
+			eta_strftime		= "%-m/%d %-I:%M%p", # Default is month/day hour:minute + AM/PM
 			i2c_address		= "0x3c", # Default is hex address 0x3c
 			image_rotate	= False,# Default if False (no rotation)
 			pin_cancel		= -1,   # Default is diabled
@@ -201,7 +200,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 		octoprint.plugin.SettingsPlugin.on_settings_save(self, data)
 		self._bounce = int(self._settings.get(["bounce"]))
-		self._date_format = str(self._settings.get(["date_format"]))
+		self._eta_strftime = str(self._settings.get(["eta_strftime"]))
 		self._image_rotate = bool(self._settings.get(["image_rotate"]))
 		self._pin_cancel = int(self._settings.get(["pin_cancel"]))
 		self._pin_mode = int(self._settings.get(["pin_mode"]))
@@ -360,7 +359,6 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			self.height = self.disp.height
 			self.image = Image.new("1", (self.width, self.height))
 			self.draw = ImageDraw.Draw(self.image)
-			self.bottom_height = 22
 			self._screen_mode = ScreenModes.SYSTEM
 		except Exception as ex:
 			self.log_error(ex)
@@ -586,7 +584,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 
 		top = 0
-		bottom = self.height - self.bottom_height
+		bottom = self.height - self._bottom_height
 		left = 0
 
 		if self._display_init:
@@ -616,7 +614,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 		if self._display_init:
 			top = 0
-			bottom = self.height - self.bottom_height
+			bottom = self.height - self._bottom_height
 			left = 0
 
 			# Draw a black filled box to clear the image.
@@ -640,7 +638,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 		if self._display_init:
 			top = 0
-			bottom = self.height - self.bottom_height
+			bottom = self.height - self._bottom_height
 			left = 0
 
 			try:
@@ -667,7 +665,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 		if self._display_init:
 			top = 0
-			bottom = self.height - self.bottom_height
+			bottom = self.height - self._bottom_height
 			left = 0
 
 			try:
@@ -696,7 +694,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 
 		if self._display_init:
-			top = self.height - self.bottom_height
+			top = self.height - self._bottom_height
 			bottom = self.height
 			left = 0
 
@@ -739,7 +737,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 					# Percentage and ETA
 					self.draw.text((0, top + 12), "%s%%" % (percentage), font=self.font, fill=255)
-					eta = time.strftime(self._date_format, time.localtime(time.time() + time_left))
+					eta = time.strftime(self._eta_strftime, time.localtime(time.time() + time_left))
 					eta_width = self.draw.textsize(eta, font=self.font)[0]
 					self.draw.text((self.width - eta_width, top + 12), eta, font=self.font, fill=255)
 			except Exception as ex:
