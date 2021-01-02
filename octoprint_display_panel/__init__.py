@@ -40,15 +40,15 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
                           octoprint.plugin.SettingsPlugin):
 
 	_bottom_height = 22
-	_bounce = 0
 	_cancel_requested_at = 0
 	_cancel_timer = None
+	_debounce = 0
 	_display_init = False
 	_etl_format = "{hours:02d}h {minutes:02d}m {seconds:02d}s"
 	_eta_strftime = ""
 	_gpio_init = False
 	_image_rotate = False
-	_last_bounce = 0
+	_last_debounce = 0
 	_last_i2c_address = ""
 	_last_image_rotate = False
 	_last_pin_cancel = -1
@@ -155,7 +155,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Prepare variables for setting modification detection
 		"""
 
-		self._bounce = int(self._settings.get(["bounce"]))
+		self._debounce = int(self._settings.get(["debounce"]))
 		self._display_init = False
 		self._eta_strftime = str(self._settings.get(["eta_strftime"]))
 		self._gpio_init = False
@@ -169,7 +169,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			self._i2c_address = hex(int(self._settings.get(["i2c_address"]),base=16))
 		else:
 			self._i2c_address = hex(int("0x" + self._settings.get(["i2c_address"]),base=16))
-		self._last_bounce = self._bounce
+		self._last_debounce = self._debounce
 		self._last_i2c_address = self._i2c_address
 		self._last_image_rotate = False
 		self._last_pin_cancel = self._pin_cancel
@@ -183,8 +183,8 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 
 		return dict(
-			bounce			= 250,  # Debounce 250ms
-			eta_strftime		= "%-m/%d %-I:%M%p", # Default is month/day hour:minute + AM/PM
+			debounce		= 250,  # Debounce 250ms
+			eta_strftime	= "%-m/%d %-I:%M%p", # Default is month/day hour:minute + AM/PM
 			i2c_address		= "0x3c", # Default is hex address 0x3c
 			image_rotate	= False,# Default if False (no rotation)
 			pin_cancel		= -1,   # Default is diabled
@@ -199,7 +199,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 
 		octoprint.plugin.SettingsPlugin.on_settings_save(self, data)
-		self._bounce = int(self._settings.get(["bounce"]))
+		self._debounce = int(self._settings.get(["debounce"]))
 		self._eta_strftime = str(self._settings.get(["eta_strftime"]))
 		self._image_rotate = bool(self._settings.get(["image_rotate"]))
 		self._pin_cancel = int(self._settings.get(["pin_cancel"]))
@@ -241,7 +241,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			self._gpio_init = False
 			self.setup_gpio()
 
-			if pins_updated == (pow(2, 4) - 1) or self._bounce != self._last_bounce:
+			if pins_updated == (pow(2, 4) - 1) or self._debounce != self._last_debounce:
 				self.configure_gpio()
 				pins_updated = 0
 
@@ -260,7 +260,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			if pins_updated > 0:
 				self.log_error("Something went wrong counting updated GPIO pins")
 
-			self._last_bounce = self._bounce
+			self._last_debounce = self._debounce
 			self._last_pin_cancel = self._pin_cancel
 			self._last_pin_mode = self._pin_mode
 			self._last_pin_play = self._pin_play
@@ -421,7 +421,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 					GPIO.setup(gpio_pin, GPIO.IN, GPIO.PUD_UP)
 					GPIO.remove_event_detect(gpio_pin)
 					self._logger.info("Adding GPIO event detect on pin %s with edge: FALLING", gpio_pin)
-					GPIO.add_event_detect(gpio_pin, GPIO.FALLING, callback=self.handle_gpio_event, bouncetime=self._bounce)
+					GPIO.add_event_detect(gpio_pin, GPIO.FALLING, callback=self.handle_gpio_event, bouncetime=self._debounce)
 			except Exception as ex:
 				self.log_error(ex)
 

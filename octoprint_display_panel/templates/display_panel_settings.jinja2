@@ -117,14 +117,14 @@
     <div class="control-group">
         <label class="control-label">{{ _('Date format') }}</label>
         <div class="controls data-toggle="tooltip" title="{{ _('How to format ETA.') }}"">
-            <input type="text" class="input-block-level" data-bind="value: settings.plugins.display_panel.date_format">
+            <input type="text" class="input-block-level" data-bind="value: settings.plugins.display_panel.eta_strftime">
 			<div class="help-block">{{ _('How to format ETA on print screen. Format according to python\'s strftime directives.') }}</div>
         </div>
     </div>
     <div class="control-group">
         <label class="control-label">{{ _('Debounce Time:') }}</label>
         <div class="controls" data-toggle="tooltip" title="{{ _('When press the switches, wait for this amount of time to wait for the signal to stabilize.') }}">
-            <input type="number" step="any" min="0" class="input-mini text-right" data-bind="value: settings.plugins.display_panel.bounce">
+            <input type="number" step="any" min="0" class="input-mini text-right" data-bind="value: settings.plugins.display_panel.debounce">
             <span class="add-on">ms</span>
 			<div class="help-block">{{ _('When press the switches, wait for this amount of time to wait for the signal to stabilize.') }}</div>
         </div>
