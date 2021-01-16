@@ -1,7 +1,7 @@
 # coding=utf-8
 from __future__ import absolute_import
 
-# system stats 
+# system stats
 import psutil
 import shutil
 import socket
@@ -281,17 +281,17 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		# for details.
 		return dict(
 			display_panel=dict(
-				displayName="Display Panel Plugin",
+				displayName="Micro Panel Plugin",
 				displayVersion=self._plugin_version,
 
 				# version check: github repository
 				type="github_release",
 				user="sethvoltz",
-				repo="OctoPrint-DisplayPanel",
+				repo="OctoPrint-MicroPanel",
 				current=self._plugin_version,
 
 				# update method: pip
-				pip="https://github.com/sethvoltz/OctoPrint-DisplayPanel/archive/{target_version}.zip"
+				pip="https://github.com/sethvoltz/OctoPrint-MicroPanel/archive/{target_version}.zip"
 			)
 		)
 
@@ -780,7 +780,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		message = template.format(type(ex).__name__, inspect.currentframe().f_code.co_name, ex.args)
 		self._logger.warn(message)
 
-__plugin_name__ = "Display Panel Plugin"
+__plugin_name__ = "Micro Panel Plugin"
 __plugin_pythoncompat__ = ">=3,<4" # only python 3
 
 def __plugin_load__():
