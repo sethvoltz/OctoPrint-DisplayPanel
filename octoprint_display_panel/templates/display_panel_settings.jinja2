@@ -114,8 +114,10 @@
 				<div class="control-group">
 					<label class="control-label">{{ _('Debounce Time:') }}</label>
 					<div class="controls" data-toggle="tooltip" title="{{ _('When press the switches, wait for this amount of time to wait for the signal to stabilize.') }}">
-						<input type="number" step="any" min="0" class="input-mini text-right" data-bind="value: settings.plugins.display_panel.debounce">
-						<span class="add-on">ms</span>
+            			<div class="input-append">
+							<input type="number" step="any" min="0" class="input-mini text-right" data-bind="value: settings.plugins.display_panel.debounce">
+							<span class="add-on">ms</span>
+						</div>
 						<div class="help-block">{{ _('When pressing the switches, wait this amount of time for the signal to stabilize. If you experience accidental double clicks, increase this value.') }}</div>
 					</div>
 				</div>
@@ -127,7 +129,7 @@
 
 			<div id="display_panel_display" class="tab-pane">
 				<div class="control-group">
-					<label class="control-label">{{ _('Display address') }}</label>
+					<label class="control-label">{{ _('Display address:') }}</label>
 					<div class="controls data-toggle="tooltip" title="{{ _('Which I2C address to use for display.') }}"">
 						<select data-bind="value: settings.plugins.display_panel.i2c_address">
 							<option value="0x3c">0x3c</option>
@@ -137,7 +139,7 @@
 					</div>
 				</div>
 				<div class="control-group">
-					<label class="control-label">{{ _('Date format') }}</label>
+					<label class="control-label">{{ _('Date format:') }}</label>
 					<div class="controls data-toggle="tooltip" title="{{ _('How to format ETA.') }}"">
 						<input type="text" class="input-block-level" data-bind="value: settings.plugins.display_panel.eta_strftime">
 						<div class="help-block">{{ _('How to format ETA on print screen. Format according to python\'s strftime directives.') }}</div>
@@ -148,6 +150,28 @@
 					<div class="controls" data-toggle="tooltip" title="{{ _('Rotate image on display by 180 degrees.') }}">
 						<input class="input-checkbox" type="checkbox" data-bind="checked: settings.plugins.display_panel.image_rotate">
 						<div class="help-block">{{ _('Rotate image on display by 180 degrees.') }}</div>
+					</div>
+				</div>
+				<div class="control-group">
+					<label class="control-label">{{ _('Display timeout for:') }}</label>
+					<div class="controls" data-toggle="tooltip" title="{{ _('How long before display turns off.') }}">
+            			<div class="input-append">
+							<input type="number" step="any" min="1" class="input-mini text-right" data-bind="value: settings.plugins.display_panel.display_timeout_time">
+							<span class="add-on">min</span>
+						</div>
+						<div class="help-block">{{ _('After last button press, wait this amount of time for the display to turn off. The display can be turned on again by pressing any button.') }}</div>
+					</div>
+				</div>
+				<div class="control-group">
+					<label class="control-label">{{ _('Display timeout when:') }}</label>
+					<div class="controls data-toggle="tooltip" title="{{ _('Under which condition the display shall turn off after a certain amount of time.') }}"">
+						<select data-bind="value: settings.plugins.display_panel.display_timeout_option">
+							<option value="-1">never</option>
+							<option value="0">printer is disconnected</option>
+							<option value="1">printer is disconnected/idle</option>
+							<option value="2">always</option>
+						</select>
+						<div class="help-block">{{ _('Under which condition the display shall turn off after a certain amount of time. A paused prints or not printing are considered as idle. Display will be turned on, on status change (e.g. printer gets connected, print starts, print finishes, printer gets disconnected)') }}</div>
 					</div>
 				</div>
 
