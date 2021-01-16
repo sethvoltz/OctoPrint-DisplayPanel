@@ -69,6 +69,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 	_printer_state = 0	# 0 - disconnected, 1 - connected but idle, 2 - printing
 	_screen_mode = ScreenModes.SYSTEM
 	_system_stats = {}
+	_timebased_progress = False
 
 	##~~ StartupPlugin mixin
 
@@ -189,6 +190,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		self._last_pin_mode = self._pin_mode
 		self._last_pin_pause = self._pin_pause
 		self._last_pin_play = self._pin_play
+		self._timebased_progress = bool(self._settings.get(["timebased_progress"]))
 
 	def get_settings_defaults(self):
 		"""
@@ -202,10 +204,11 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			eta_strftime	= "%-m/%d %-I:%M%p",	# Default is month/day hour:minute + AM/PM
 			i2c_address		= "0x3c",		# Default is hex address 0x3c
 			image_rotate	= False,		# Default if False (no rotation)
-			pin_cancel		= -1,			# Default is diabled
-			pin_mode		= -1,			# Default is diabled
-			pin_pause		= -1,			# Default is diabled
-			pin_play		= -1,			# Default is diabled
+			pin_cancel		= -1,			# Default is disabled
+			pin_mode		= -1,			# Default is disabled
+			pin_pause		= -1,			# Default is disabled
+			pin_play		= -1,			# Default is disabled
+			timebased_progress	= False,	# Default is disabled
 		)
 
 	def on_settings_save(self, data):
@@ -822,6 +825,9 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 				else:
 					percentage = int(current_data['progress']['completion'] or 0)
+					# Calculate progress from time
+					if current_data['progress']['printTime'] and self._timebased_progress:
+						percentage = int((current_data['progress']['printTime'] or 0) / ((current_data['progress']['printTime'] or 0) + current_data['progress']['printTimeLeft']) * 100)
 					time_left = current_data['progress']['printTimeLeft'] or 0
 
 					# Progress bar

@@ -174,6 +174,13 @@
 						<div class="help-block">{{ _('Under which condition the display shall turn off after a certain amount of time. A paused prints or not printing are considered as idle. Display will be turned on, on status change (e.g. printer gets connected, print starts, print finishes, printer gets disconnected)') }}</div>
 					</div>
 				</div>
+				<div class="control-group">
+					<label class="control-label">{{ _('Time based progress:') }}</label>
+					<div class="controls" data-toggle="tooltip" title="{{ _('Calculate progress by time printed and total print time instead of amount of transfered bytes.') }}">
+						<input class="input-checkbox" type="checkbox" data-bind="checked: settings.plugins.display_panel.timebased_progress">
+						<div class="help-block">{{ _('Calculate progress by time printed and total print time instead of amount of transfered bytes.') }}</div>
+					</div>
+				</div>
 
 				<div>
 					<a target="_blank" href="https://strftime.org/">{{ _('Python\'s strftime directives') }}</a>
