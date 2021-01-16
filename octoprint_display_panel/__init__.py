@@ -10,7 +10,7 @@ import json
 
 import octoprint.plugin
 from octoprint.events import eventManager, Events
-from octoprint.util import RepeatedTimer
+from octoprint.util import RepeatedTimer, ResettableTimer
 import time
 from enum import Enum
 from board import SCL, SDA
@@ -44,21 +44,29 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 	_cancel_timer = None
 	_debounce = 0
 	_display_init = False
+	_display_timeout_active = False
+	_display_timeout_option = 0	# -1 - deactivated, 0 - printer disconnected, 1 - disconnected/connected but idle, 2 - always
+	_display_timeout_time = 0
+	_display_timeout_timer = None
 	_etl_format = "{hours:02d}h {minutes:02d}m {seconds:02d}s"
 	_eta_strftime = ""
 	_gpio_init = False
 	_image_rotate = False
 	_last_debounce = 0
+	_last_display_timeout_option = 0	# -1 - deactivated, 0 - printer disconnected, 1 - disconnected/connected but idle, 2 - always
+	_last_display_timeout_time = 0
 	_last_i2c_address = ""
 	_last_image_rotate = False
 	_last_pin_cancel = -1
 	_last_pin_mode = -1
 	_last_pin_pause = -1
 	_last_pin_play = -1
+	_last_printer_state = 0	# 0 - disconnected, 1 - connected but idle, 2 - printing
 	_pin_cancel = -1
 	_pin_mode = -1
 	_pin_pause = -1
 	_pin_play = -1
+	_printer_state = 0	# 0 - disconnected, 1 - connected but idle, 2 - printing
 	_screen_mode = ScreenModes.SYSTEM
 	_system_stats = {}
 
@@ -76,6 +84,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		self.check_system_stats()
 		self.start_system_timer()
 		self.update_ui()
+		self.start_display_timer()
 
 	##~~ ShutdownPlugin mixin
 
@@ -84,6 +93,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		ShutdownPlugin lifecycle hook, called before Octoprint shuts down
 		"""
 
+		self.stop_display_timer()
 		self.clear_display()
 		self.clean_gpio()
 
@@ -95,6 +105,8 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 
 		# self._logger.info("on_event: %s", event)
+
+		self.set_printer_state(event)
 
 		# Connectivity
 		if event == Events.DISCONNECTED:
@@ -157,19 +169,20 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 		self._debounce = int(self._settings.get(["debounce"]))
 		self._display_init = False
+		self._display_timeout_option = int(self._settings.get(["display_timeout_option"]))
+		self._display_timeout_time = int(self._settings.get(["display_timeout_time"]))
 		self._eta_strftime = str(self._settings.get(["eta_strftime"]))
 		self._gpio_init = False
+		self._i2c_address = str(self._settings.get(["i2c_address"]))
 		self._image_rotate = bool(self._settings.get(["image_rotate"]))
 		self._pin_cancel = int(self._settings.get(["pin_cancel"]))
 		self._pin_mode = int(self._settings.get(["pin_mode"]))
 		self._pin_pause = int(self._settings.get(["pin_pause"]))
 		self._pin_play = int(self._settings.get(["pin_play"]))
 		self._screen_mode = ScreenModes.SYSTEM
-		if self._settings.get(["i2c_address"])[0:2] == "0x":
-			self._i2c_address = hex(int(self._settings.get(["i2c_address"]),base=16))
-		else:
-			self._i2c_address = hex(int("0x" + self._settings.get(["i2c_address"]),base=16))
 		self._last_debounce = self._debounce
+		self._last_display_timeout_option = self._display_timeout_option
+		self._last_display_timeout_time = self._display_timeout_time
 		self._last_i2c_address = self._i2c_address
 		self._last_image_rotate = False
 		self._last_pin_cancel = self._pin_cancel
@@ -183,14 +196,16 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 
 		return dict(
-			debounce		= 250,  # Debounce 250ms
-			eta_strftime	= "%-m/%d %-I:%M%p", # Default is month/day hour:minute + AM/PM
-			i2c_address		= "0x3c", # Default is hex address 0x3c
-			image_rotate	= False,# Default if False (no rotation)
-			pin_cancel		= -1,   # Default is diabled
-			pin_mode		= -1,   # Default is diabled
-			pin_pause		= -1,   # Default is diabled
-			pin_play		= -1,   # Default is diabled
+			debounce		= 250,			# Debounce 250ms
+			display_timeout_option	= -1,	# Default is never
+			display_timeout_time	= 5,	# Default is 5 minutes
+			eta_strftime	= "%-m/%d %-I:%M%p",	# Default is month/day hour:minute + AM/PM
+			i2c_address		= "0x3c",		# Default is hex address 0x3c
+			image_rotate	= False,		# Default if False (no rotation)
+			pin_cancel		= -1,			# Default is diabled
+			pin_mode		= -1,			# Default is diabled
+			pin_pause		= -1,			# Default is diabled
+			pin_play		= -1,			# Default is diabled
 		)
 
 	def on_settings_save(self, data):
@@ -200,16 +215,15 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 		octoprint.plugin.SettingsPlugin.on_settings_save(self, data)
 		self._debounce = int(self._settings.get(["debounce"]))
+		self._display_timeout_option = int(self._settings.get(["display_timeout_option"]))
+		self._display_timeout_time = int(self._settings.get(["display_timeout_time"]))
 		self._eta_strftime = str(self._settings.get(["eta_strftime"]))
+		self._i2c_address = str(self._settings.get(["i2c_address"]))
 		self._image_rotate = bool(self._settings.get(["image_rotate"]))
 		self._pin_cancel = int(self._settings.get(["pin_cancel"]))
 		self._pin_mode = int(self._settings.get(["pin_mode"]))
 		self._pin_pause = int(self._settings.get(["pin_pause"]))
 		self._pin_play = int(self._settings.get(["pin_play"]))
-		if self._settings.get(["i2c_address"])[0:2] == "0x":
-			self._i2c_address = hex(int(self._settings.get(["i2c_address"]),base=16))
-		else:
-			self._i2c_address = hex(int("0x" + self._settings.get(["i2c_address"]),base=16))
 		pins_updated = 0
 		try:
 			if self._i2c_address.lower() != self._last_i2c_address.lower() or \
@@ -260,7 +274,13 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			if pins_updated > 0:
 				self.log_error("Something went wrong counting updated GPIO pins")
 
+			if self._display_timeout_option != self._last_display_timeout_option or \
+			self._display_timeout_time != self._last_display_timeout_time:
+				self.start_display_timer(self._display_timeout_time != self._last_display_timeout_time)
+
 			self._last_debounce = self._debounce
+			self._last_display_timeout_option = self._display_timeout_option
+			self._last_display_timeout_time = self._display_timeout_time
 			self._last_pin_cancel = self._pin_cancel
 			self._last_pin_mode = self._pin_mode
 			self._last_pin_play = self._pin_play
@@ -460,6 +480,11 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 		try:
 			if channel in self.input_pinset:
+				if self._display_timeout_active:
+					self.start_display_timer()
+					return
+				else:
+					self.start_display_timer()
 				label = self.input_pinset[channel]
 				if label == 'cancel':
 					self.try_cancel()
@@ -548,6 +573,75 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		if self._display_init:
 			self.disp.fill(0)
 			self.disp.show()
+
+	def set_printer_state(self, event):
+		"""
+		Set printer state based on latest event
+		"""
+
+		if event in (Events.DISCONNECTED, Events.CONNECTED,
+					 Events.PRINT_STARTED, Events.PRINT_FAILED,
+					 Events.PRINT_DONE, Events.PRINT_CANCELLED,
+					 Events.PRINT_PAUSED, Events.PRINT_RESUMED):
+			if event == Events.DISCONNECTED:
+				self._printer_state = 0
+			if event in (Events.CONNECTED, Events.PRINT_FAILED,
+						 Events.PRINT_DONE, Events.PRINT_CANCELLED,
+						 Events.PRINT_PAUSED):
+				self._printer_state = 1
+			if event in (Events.PRINT_STARTED, Events.PRINT_RESUMED):
+				self._printer_state = 2
+
+			if self._printer_state != self._last_printer_state:
+				self.start_display_timer(True)
+				self._last_printer_state = self._printer_state
+		return
+
+	def start_display_timer(self, reconfigure=False):
+		"""
+		Start timer for display timeout
+		"""
+
+		do_reset = False
+		if self._display_timeout_timer is not None:
+			if reconfigure:
+				self.stop_display_timer()
+			else:
+				do_reset = True
+
+		if do_reset:
+			self._display_timeout_timer.reset()
+		else:
+			if self._printer_state <= self._display_timeout_option:
+				self._display_timeout_timer = ResettableTimer(self._display_timeout_time * 60, self.trigger_display_timeout, [True], None, True)
+				self._display_timeout_timer.start()
+			if self._display_timeout_active:
+				self.trigger_display_timeout(False)
+		return
+
+	def stop_display_timer(self):
+		"""
+		Stop timer for display timeout
+		"""
+
+		if self._display_timeout_timer is not None:
+			self._display_timeout_timer.cancel()
+			self._display_timeout_timer = None
+		return
+
+	def trigger_display_timeout(self, activate):
+		"""
+		Set display off on activate == True and on on activate == False
+		"""
+
+		self._display_timeout_active = activate
+		if self._display_init:
+			if activate:
+				self.stop_display_timer()
+				self.disp.poweroff()
+			else:
+				self.disp.poweron()
+		return
 
 	def update_ui(self):
 		"""
