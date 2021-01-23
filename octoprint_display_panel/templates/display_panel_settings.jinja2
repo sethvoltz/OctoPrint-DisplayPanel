@@ -181,6 +181,13 @@
 						<div class="help-block">{{ _('Calculate progress by time printed and total print time instead of internally reported percentage.') }}</div>
 					</div>
 				</div>
+				<div class="control-group">
+					<label class="control-label">{{ _('Progress on top:') }}</label>
+					<div class="controls" data-toggle="tooltip" title="{{ _('Show the Progress Bar at the top of the display. Useful for dual color screens.') }}">
+						<input class="input-checkbox" type="checkbox" data-bind="checked: settings.plugins.display_panel.progress_on_top">
+						<div class="help-block">{{ _('Show the Progress Bar at the top of the display. Useful for dual color screens.') }}</div>
+					</div>
+				</div>
 
 				<div>
 					<a target="_blank" href="https://strftime.org/">{{ _('Python\'s strftime directives') }}</a>
