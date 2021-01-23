@@ -9,7 +9,7 @@
 			<div id="display_panel_buttons" class="tab-pane active">
 				<div class="control-group">
 					<label class="control-label">{{ _('Mode Pin:') }}</label>
-					<div class="controls" data-toggle="tooltip" title="{{ _('Which Raspberry Pi GPIO pin (BCM mode) your Mode switch is attached to.') }}">
+					<div class="controls" data-toggle="tooltip" title="{{ _('The Raspberry Pi GPIO pin (BCM mode) the Mode switch is connected to.') }}">
 						<select data-bind="value: settings.plugins.display_panel.pin_mode">
 							<option value="-1">Disabled</option>
 							<option value="4">GPIO 4</option>
@@ -30,12 +30,12 @@
 							<option value="26">GPIO 26</option>
 							<option value="27">GPIO 27</option>
 						</select>
-						<div class="help-block">{{ _('Which Raspberry Pi GPIO pin your Mode switch is attached to.') }}</div>
+						<div class="help-block">{{ _('The Raspberry Pi GPIO pin the Mode switch is connected to.') }}</div>
 					</div>
 				</div>
 				<div class="control-group">
 					<label class="control-label">{{ _('Cancel Pin:') }}</label>
-					<div class="controls" data-toggle="tooltip" title="{{ _('Which Raspberry Pi GPIO pin (BCM mode) your Cancel switch is attached to.') }}">
+					<div class="controls" data-toggle="tooltip" title="{{ _('The Raspberry Pi GPIO pin (BCM mode) the Cancel switch is connected to.') }}">
 						<select data-bind="value: settings.plugins.display_panel.pin_cancel">
 							<option value="-1">Disabled</option>
 							<option value="4">GPIO 4</option>
@@ -56,12 +56,12 @@
 							<option value="26">GPIO 26</option>
 							<option value="27">GPIO 27</option>
 						</select>
-						<div class="help-block">{{ _('Which Raspberry Pi GPIO pin your Cancel switch is attached to.') }}</div>
+						<div class="help-block">{{ _('The Raspberry Pi GPIO pin the Cancel switch is connected to.') }}</div>
 					</div>
 				</div>
 				<div class="control-group">
 					<label class="control-label">{{ _('Play Pin:') }}</label>
-					<div class="controls" data-toggle="tooltip" title="{{ _('Which Raspberry Pi GPIO pin (BCM mode) your Play switch is attached to.') }}">
+					<div class="controls" data-toggle="tooltip" title="{{ _('The Raspberry Pi GPIO pin (BCM mode) the Play switch is connected to.') }}">
 						<select data-bind="value: settings.plugins.display_panel.pin_play">
 							<option value="-1">Disabled</option>
 							<option value="4">GPIO 4</option>
@@ -82,12 +82,12 @@
 							<option value="26">GPIO 26</option>
 							<option value="27">GPIO 27</option>
 						</select>
-						<div class="help-block">{{ _('Which Raspberry Pi GPIO pin your Play switch is attached to.') }}</div>
+						<div class="help-block">{{ _('The Raspberry Pi GPIO pin the Play switch is connected to.') }}</div>
 					</div>
 				</div>
 				<div class="control-group">
 					<label class="control-label">{{ _('Pause Pin:') }}</label>
-					<div class="controls" data-toggle="tooltip" title="{{ _('Which Raspberry Pi GPIO pin (BCM mode) your Pause switch is attached to.') }}">
+					<div class="controls" data-toggle="tooltip" title="{{ _('The Raspberry Pi GPIO pin (BCM mode) the Pause switch is connected to.') }}">
 						<select data-bind="value: settings.plugins.display_panel.pin_pause">
 							<option value="-1">Disabled</option>
 							<option value="4">GPIO 4</option>
@@ -108,7 +108,7 @@
 							<option value="26">GPIO 26</option>
 							<option value="27">GPIO 27</option>
 						</select>
-						<div class="help-block">{{ _('Which Raspberry Pi GPIO pin your Pause switch is attached to.') }}</div>
+						<div class="help-block">{{ _('The Raspberry Pi GPIO pin the Pause switch is connected to.') }}</div>
 					</div>
 				</div>
 				<div class="control-group">
@@ -122,7 +122,7 @@
 					</div>
 				</div>
 
-				<div>
+				<div class="help-block">
 					<a target="_blank" href="https://www.raspberrypi.org/documentation/usage/gpio/">{{ _('Raspberry Pi GPIO pinout') }}</a>
 				</div>
 			</div>
