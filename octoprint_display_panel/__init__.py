@@ -809,13 +809,13 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 					# Display height if information available from DisplayLayerProgress plugin
 					current_height = self.float_count_formatter((self._displaylayerprogress_current_height or -1.0), 1)
 					total_height = self.float_count_formatter((self._displaylayerprogress_total_height or -1.0), 1)
-					height = "H: {:>5.1f} of {:>5.1f}mm".format(current_height, total_height)
-					layer = "L: {:>4d} of {:>4d}".format(self._displaylayerprogress_current_layer, self._displaylayerprogress_total_layer)
+					height = "{:>5.1f}/{:>5.1f}".format(current_height, total_height)
+					layer = "{:>4d}/{:>4d}".format(self._displaylayerprogress_current_layer, self._displaylayerprogress_total_layer)
 					if self._displaylayerprogress_current_height != -1.0 and self._displaylayerprogress_current_layer != -1:
-						height_text = layer + " / " + height
-					if self._displaylayerprogress_current_layer != -1:
+						height_text = layer + "-" + height
+					elif self._displaylayerprogress_current_layer != -1:
 						height_text = layer
-					if self._displaylayerprogress_current_height != -1.0:
+					elif self._displaylayerprogress_current_height != -1.0:
 						height_text = height
 					self.draw.text((left, top + offset + 36), height_text, font=self.font, fill=255)
 				else:
