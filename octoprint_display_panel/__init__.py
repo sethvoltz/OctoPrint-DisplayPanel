@@ -39,7 +39,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
                           octoprint.plugin.TemplatePlugin,
                           octoprint.plugin.SettingsPlugin):
 
-	_area_offset = 2
+	_area_offset = 3
 	_cancel_requested_at = 0
 	_cancel_timer = None
 	_colored_strip_height = 16 # height of colored strip on top for dual color display
