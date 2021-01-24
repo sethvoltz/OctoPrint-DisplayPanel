@@ -148,10 +148,16 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		# Get progress information from DisplayLayerProgress plugin
 		if event in ("DisplayLayerProgress_heightChanged",
 						"DisplayLayerProgress_layerChanged"):
-			self._displaylayerprogress_current_height = (float(payload.get('currentHeight')) or -1.0)
-			self._displaylayerprogress_current_layer = (int(payload.get('currentLayer')) or -1)
-			self._displaylayerprogress_total_height = (float(payload.get('totalHeight')) or -1.0)
-			self._displaylayerprogress_total_layer = (int(payload.get('totalLayer')) or -1)
+			if payload.get('currentHeight') != "-":
+				self._displaylayerprogress_current_height = float(payload.get('currentHeight'))
+			else:
+				self._displaylayerprogress_current_height = -1.0
+			if payload.get('currentLayer') != "-":
+				self._displaylayerprogress_current_layer = int(payload.get('currentLayer'))
+			else:
+				self._displaylayerprogress_current_layer = -1
+			self._displaylayerprogress_total_height = float(payload.get('totalHeight'))
+			self._displaylayerprogress_total_layer = int(payload.get('totalLayer'))
 			self.update_ui()
 
 	##~~ ProgressPlugin mixin
@@ -807,10 +813,9 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 					self.draw.text((left, top + offset + 27), "Filament: %sm/%scm3" % (filament_length, filament_mass), font=self.font, fill=255)
 
 					# Display height if information available from DisplayLayerProgress plugin
-					current_height = self.float_count_formatter((self._displaylayerprogress_current_height or -1.0), 1)
-					total_height = self.float_count_formatter((self._displaylayerprogress_total_height or -1.0), 1)
-					height = "{:>5.1f}/{:>5.1f}".format(current_height, total_height)
+					height = "{:>5.1f}/{:>5.1f}".format(float(self._displaylayerprogress_current_height), float(self._displaylayerprogress_total_height))
 					layer = "{:>4d}/{:>4d}".format(self._displaylayerprogress_current_layer, self._displaylayerprogress_total_layer)
+					height_text = ""
 					if self._displaylayerprogress_current_height != -1.0 and self._displaylayerprogress_current_layer != -1:
 						height_text = layer + ";" + height
 					elif self._displaylayerprogress_current_layer != -1:
