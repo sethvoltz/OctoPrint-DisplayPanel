@@ -812,7 +812,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 					height = "{:>5.1f}/{:>5.1f}".format(current_height, total_height)
 					layer = "{:>4d}/{:>4d}".format(self._displaylayerprogress_current_layer, self._displaylayerprogress_total_layer)
 					if self._displaylayerprogress_current_height != -1.0 and self._displaylayerprogress_current_layer != -1:
-						height_text = layer + "-" + height
+						height_text = layer + ";" + height
 					elif self._displaylayerprogress_current_layer != -1:
 						height_text = layer
 					elif self._displaylayerprogress_current_height != -1.0:
