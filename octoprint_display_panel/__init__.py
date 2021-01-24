@@ -148,10 +148,10 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		# Get progress information from DisplayLayerProgress plugin
 		if event in ("DisplayLayerProgress_heightChanged",
 						"DisplayLayerProgress_layerChanged"):
-			self._displaylayerprogress_current_height = (float(payload.get('current_height')) or -1.0)
-			self._displaylayerprogress_current_layer = (int(payload.get('current_layer')) or -1)
-			self._displaylayerprogress_total_height = (float(payload.get('total_height')) or -1.0)
-			self._displaylayerprogress_total_layer = (int(payload.get('total_layers')) or -1)
+			self._displaylayerprogress_current_height = (float(payload.get('currentHeight')) or -1.0)
+			self._displaylayerprogress_current_layer = (int(payload.get('currentLayer')) or -1)
+			self._displaylayerprogress_total_height = (float(payload.get('totalHeight')) or -1.0)
+			self._displaylayerprogress_total_layer = (int(payload.get('totalLayer')) or -1)
 			self.update_ui()
 
 	##~~ ProgressPlugin mixin
