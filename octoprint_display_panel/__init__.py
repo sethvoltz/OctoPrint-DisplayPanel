@@ -45,6 +45,10 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 	_colored_strip_height = 16 # height of colored strip on top for dual color display
 	_debounce = 0
 	_display_init = False
+	_displaylayerprogress_current_height = -1.0
+	_displaylayerprogress_current_layer = -1
+	_displaylayerprogress_total_height = -1.0
+	_displaylayerprogress_total_layer = -1
 	_display_timeout_active = False
 	_display_timeout_option = 0	# -1 - deactivated, 0 - printer disconnected, 1 - disconnected/connected but idle, 2 - always
 	_display_timeout_time = 0
@@ -127,6 +131,10 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		# Print end states
 		if event in (Events.PRINT_FAILED, Events.PRINT_DONE, Events.PRINT_CANCELLED,
 								 Events.PRINT_CANCELLING):
+			self._displaylayerprogress_current_height = -1.0
+			self._displaylayerprogress_current_layer = -1
+			self._displaylayerprogress_total_height = -1.0
+			self._displaylayerprogress_total_layer = -1
 			self.update_ui()
 
 		# Print limbo states
@@ -135,6 +143,15 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 		# Mid-print states
 		if event in (Events.Z_CHANGE, Events.PRINTER_STATE_CHANGED):
+			self.update_ui()
+
+		# Get progress information from DisplayLayerProgress plugin
+		if event in ("DisplayLayerProgress_heightChanged",
+						"DisplayLayerProgress_layerChanged"):
+			self._displaylayerprogress_current_height = (float(payload.get('current_height')) or -1.0)
+			self._displaylayerprogress_current_layer = (int(payload.get('current_layer')) or -1)
+			self._displaylayerprogress_total_height = (float(payload.get('total_height')) or -1.0)
+			self._displaylayerprogress_total_layer = (int(payload.get('total_layers')) or -1)
 			self.update_ui()
 
 	##~~ ProgressPlugin mixin
@@ -788,6 +805,19 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 					filament_length = self.float_count_formatter((filament['length'] or 0) / 1000, 3)
 					filament_mass = self.float_count_formatter(filament['volume'] or 0, 3)
 					self.draw.text((left, top + offset + 27), "Filament: %sm/%scm3" % (filament_length, filament_mass), font=self.font, fill=255)
+
+					# Display height if information available from DisplayLayerProgress plugin
+					current_height = self.float_count_formatter((self._displaylayerprogress_current_height or -1.0), 1)
+					total_height = self.float_count_formatter((self._displaylayerprogress_total_height or -1.0), 1)
+					height = "H: {:>5.1f} of {:>5.1f}mm".format(current_height, total_height)
+					layer = "L: {:>4d} of {:>4d}".format(self._displaylayerprogress_current_layer, self._displaylayerprogress_total_layer)
+					if self._displaylayerprogress_current_height != -1.0 and self._displaylayerprogress_current_layer != -1:
+						height_text = layer + " / " + height
+					if self._displaylayerprogress_current_layer != -1:
+						height_text = layer
+					if self._displaylayerprogress_current_height != -1.0:
+						height_text = height
+					self.draw.text((left, top + offset + 36), height_text, font=self.font, fill=255)
 				else:
 					self.draw.text((left, top + offset + 18), "Waiting for file...", font=self.font, fill=255)
 			except Exception as ex:
