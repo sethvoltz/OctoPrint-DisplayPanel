@@ -8,6 +8,10 @@ This plugin implements the software control side of an OctoPrint Control Panel f
 
 [![Screenshot of demo video](https://img.youtube.com/vi/78emT1ollu4/0.jpg)](https://youtu.be/78emT1ollu4 "Click here to watch a demo on YouTube")
 
+## Resources
+
+Check out our [Community Discussions](https://github.com/sethvoltz/OctoPrint-DisplayPanel/discussions) forum for build show and tell, discussing new features and community support!
+
 ## Hardware
 
 Besides the [3D printed parts](https://www.thingiverse.com/thing:4674214), you will need the following parts:
@@ -63,3 +67,10 @@ There are no configuration options for this plugin at the moment. Plug and play!
 ![Hardware shot from front](docs/glamour-1.jpeg)
 ![Hardware shot from back](docs/glamour-2.jpeg)
 ![Hardware In-Situ](docs/in-situ.jpeg)
+
+## Thanks
+
+**Many thanks** to the amazing community contributors that help support and improve this for everyone!
+
+| [<img src="https://avatars.githubusercontent.com/u/60842330?v=4" width="75px;"/><br /><sub><b>Jörg Eichhorn</b></sub>](https://github.com/unclej84) | [<img src="https://avatars.githubusercontent.com/u/5175695?v=4" width="75px;"/><br /><sub><b>Andy Barnett</b></sub>](https://github.com/Andy-ABTec) |
+| :---: | :---: |
