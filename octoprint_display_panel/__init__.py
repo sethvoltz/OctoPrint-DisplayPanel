@@ -1,7 +1,7 @@
 # coding=utf-8
 from __future__ import absolute_import
 
-# system stats 
+# system stats
 import psutil
 import shutil
 import socket
@@ -39,9 +39,10 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
                           octoprint.plugin.TemplatePlugin,
                           octoprint.plugin.SettingsPlugin):
 
-	_bottom_height = 22
+	_area_offset = 3
 	_cancel_requested_at = 0
 	_cancel_timer = None
+	_colored_strip_height = 16 # height of colored strip on top for dual color display
 	_debounce = 0
 	_display_init = False
 	_display_timeout_active = False
@@ -67,6 +68,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 	_pin_pause = -1
 	_pin_play = -1
 	_printer_state = 0	# 0 - disconnected, 1 - connected but idle, 2 - printing
+	_progress_on_top = False
 	_screen_mode = ScreenModes.SYSTEM
 	_system_stats = {}
 	_timebased_progress = False
@@ -180,6 +182,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		self._pin_mode = int(self._settings.get(["pin_mode"]))
 		self._pin_pause = int(self._settings.get(["pin_pause"]))
 		self._pin_play = int(self._settings.get(["pin_play"]))
+		self._progress_on_top = bool(self._settings.get(["progress_on_top"]))
 		self._screen_mode = ScreenModes.SYSTEM
 		self._last_debounce = self._debounce
 		self._last_display_timeout_option = self._display_timeout_option
@@ -208,6 +211,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			pin_mode		= -1,			# Default is disabled
 			pin_pause		= -1,			# Default is disabled
 			pin_play		= -1,			# Default is disabled
+			progress_on_top	= False,		# Default is disabled
 			timebased_progress	= False,	# Default is disabled
 		)
 
@@ -680,119 +684,123 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Show a confirmation message that a cancel print has been requested
 		"""
 
-		top = 0
-		bottom = self.height - self._bottom_height
+		top = (self._colored_strip_height) * int(self._progress_on_top)
+		bottom = self.height - (self._colored_strip_height * int(not self._progress_on_top))
 		left = 0
+		offset = self._area_offset * int(self._progress_on_top)
 
 		if self._display_init:
 			try:
-				self.draw.rectangle((0, 0, self.width, bottom), fill=0)
+				self.draw.rectangle((0, top, self.width, bottom), fill=0)
 
 				display_string = "Cancel Print?"
 				text_width = self.draw.textsize(display_string, font=self.font)[0]
-				self.draw.text((self.width / 2 - text_width / 2, top + 0), display_string, font=self.font, fill=255)
+				self.draw.text((self.width / 2 - text_width / 2, top + offset + 0), display_string, font=self.font, fill=255)
 				display_string = "Press 'X' to confirm"
 				text_width = self.draw.textsize(display_string, font=self.font)[0]
-				self.draw.text((self.width / 2 - text_width / 2, top + 9), display_string, font=self.font, fill=255)
+				self.draw.text((self.width / 2 - text_width / 2, top + offset + 9), display_string, font=self.font, fill=255)
 				display_string = "Press any button or"
 				text_width = self.draw.textsize(display_string, font=self.font)[0]
-				self.draw.text((self.width / 2 - text_width / 2, top + 18), display_string, font=self.font, fill=255)
+				self.draw.text((self.width / 2 - text_width / 2, top + offset + 18), display_string, font=self.font, fill=255)
 				display_string = "wait 10 sec to escape"
 				text_width = self.draw.textsize(display_string, font=self.font)[0]
-				self.draw.text((self.width / 2 - text_width / 2, top + 27), display_string, font=self.font, fill=255)
+				self.draw.text((self.width / 2 - text_width / 2, top + offset + 27), display_string, font=self.font, fill=255)
 			except Exception as ex:
 				self.log_error(ex)
 
 
 	def update_ui_system(self):
 		"""
-		Update the upper two-thirds of the screen with system stats collected by the timed collector
+		Update three-fourths of the screen with system stats collected by the timed collector
 		"""
 
 		if self._display_init:
-			top = 0
-			bottom = self.height - self._bottom_height
+			top = (self._colored_strip_height) * int(self._progress_on_top)
+			bottom = self.height - (self._colored_strip_height * int(not self._progress_on_top))
 			left = 0
+			offset = self._area_offset * int(self._progress_on_top)
 
 			# Draw a black filled box to clear the image.
-			self.draw.rectangle((0, 0, self.width, bottom), fill=0)
+			self.draw.rectangle((0, top, self.width, bottom), fill=0)
 
 			try:
 				mem = self._system_stats['memory']
 				disk = self._system_stats['disk']
 				# Write four lines of text.
-				self.draw.text((left, top + 0), "IP: %s" % (self._system_stats['ip']), font=self.font, fill=255)
-				self.draw.text((left, top + 9), "Load: %s, %s, %s" % self._system_stats['load'], font=self.font, fill=255)
-				self.draw.text((left, top + 18), "Mem: %s/%s MB %s%%" % (int(mem.used/1048576), int(mem.total/1048576), mem.percent), font=self.font, fill=255)
-				self.draw.text((left, top + 27), "Disk: %s/%s GB %s%%" % (int(disk.used/1073741824), int((disk.used+disk.total)/1073741824), int(10000*disk.used/(disk.used+disk.free))/100), font=self.font, fill=255)
+				self.draw.text((left, top + offset + 0), "IP: %s" % (self._system_stats['ip']), font=self.font, fill=255)
+				self.draw.text((left, top + offset + 9), "Load: %s, %s, %s" % self._system_stats['load'], font=self.font, fill=255)
+				self.draw.text((left, top + offset + 18), "Mem: %s/%s MB %s%%" % (int(mem.used/1048576), int(mem.total/1048576), mem.percent), font=self.font, fill=255)
+				self.draw.text((left, top + offset + 27), "Disk: %s/%s GB %s%%" % (int(disk.used/1073741824), int((disk.used+disk.total)/1073741824), int(10000*disk.used/(disk.used+disk.free))/100), font=self.font, fill=255)
 			except:
-				self.draw.text((left, top + 9), "Gathering System Stats", font=self.font, fill=255)
+				self.draw.text((left, top + offset + 9), "Gathering System Stats", font=self.font, fill=255)
 
 	def update_ui_printer(self):
 		"""
-		Update the upper two-thirds of the screen with stats about the printer, such as temperatures
+		Update three-fourths of the screen with stats about the printer, such as temperatures
 		"""
 
 		if self._display_init:
-			top = 0
-			bottom = self.height - self._bottom_height
+			top = (self._colored_strip_height) * int(self._progress_on_top)
+			bottom = self.height - (self._colored_strip_height * int(not self._progress_on_top))
 			left = 0
+			offset = self._area_offset * int(self._progress_on_top)
 
 			try:
-				self.draw.rectangle((0, 0, self.width, bottom), fill=0)
-				self.draw.text((left, top + 0), "Printer Temperatures", font=self.font, fill=255)
+				self.draw.rectangle((0, top, self.width, bottom), fill=0)
+				self.draw.text((left, top + offset + 0), "Printer Temperatures", font=self.font, fill=255)
 
 				if self._printer.get_current_connection()[0] == "Closed":
-					self.draw.text((left, top + 9), "Head: no printer", font=self.font, fill=255)
-					self.draw.text((left, top + 18), " Bed: no printer", font=self.font, fill=255)
+					self.draw.text((left, top + offset + 9), "Head: no printer", font=self.font, fill=255)
+					self.draw.text((left, top + offset + 18), " Bed: no printer", font=self.font, fill=255)
 				else:
 					temperatures = self._printer.get_current_temperatures()
 					tool = temperatures['tool0'] or None
 					bed = temperatures['bed'] or None
 
-					self.draw.text((left, top + 9), "Head: %s / %s ºC" % (tool['actual'], tool['target']), font=self.font, fill=255)
-					self.draw.text((left, top + 18), " Bed: %s / %s ºC" % (bed['actual'], bed['target']), font=self.font, fill=255)
+					self.draw.text((left, top + offset + 9), "Head: %s / %s \xb0C" % (tool['actual'], tool['target']), font=self.font, fill=255)
+					self.draw.text((left, top + offset + 18), " Bed: %s / %s \xb0C" % (bed['actual'], bed['target']), font=self.font, fill=255)
 			except Exception as ex:
 				self.log_error(ex)
 
 	def update_ui_print(self, current_data):
 		"""
-		Update the upper two-thirds of the screen with information about the current ongoing print
+		Update three-fourths of the screen with information about the current ongoing print
 		"""
 
 		if self._display_init:
-			top = 0
-			bottom = self.height - self._bottom_height
+			top = (self._colored_strip_height) * int(self._progress_on_top)
+			bottom = self.height - (self._colored_strip_height * int(not self._progress_on_top))
 			left = 0
+			offset = self._area_offset * int(self._progress_on_top)
 
 			try:
-				self.draw.rectangle((0, 0, self.width, bottom), fill=0)
-				self.draw.text((left, top + 0), "State: %s" % (self._printer.get_state_string()), font=self.font, fill=255)
+				self.draw.rectangle((0, top, self.width, bottom), fill=0)
+				self.draw.text((left, top + offset + 0), "State: %s" % (self._printer.get_state_string()), font=self.font, fill=255)
 
 				if current_data['job']['file']['name']:
 					file_name = current_data['job']['file']['name']
-					self.draw.text((left, top + 9), "File: %s" % (file_name), font=self.font, fill=255)
+					self.draw.text((left, top + offset + 9), "File: %s" % (file_name), font=self.font, fill=255)
 
 					print_time = self._get_time_from_seconds(current_data['progress']['printTime'] or 0)
-					self.draw.text((left, top + 18), "Time: %s" % (print_time), font=self.font, fill=255)
+					self.draw.text((left, top + offset + 18), "Time: %s" % (print_time), font=self.font, fill=255)
 
 					filament = current_data['job']['filament']['tool0'] if "tool0" in current_data['job']['filament'] else current_data['job']['filament']
 					filament_length = self.float_count_formatter((filament['length'] or 0) / 1000, 3)
 					filament_mass = self.float_count_formatter(filament['volume'] or 0, 3)
-					self.draw.text((left, top + 27), "Filament: %sm/%scm3" % (filament_length, filament_mass), font=self.font, fill=255)
+					self.draw.text((left, top + offset + 27), "Filament: %sm/%scm3" % (filament_length, filament_mass), font=self.font, fill=255)
 				else:
-					self.draw.text((left, top + 18), "Waiting for file...", font=self.font, fill=255)
+					self.draw.text((left, top + offset + 18), "Waiting for file...", font=self.font, fill=255)
 			except Exception as ex:
 				self.log_error(ex)
 
 	def update_ui_bottom(self, current_data):
 		"""
-		Update the bottom third of the screen with persistent information about the current print
+		Update one-fourths of the screen with persistent information about the current print
 		"""
 
 		if self._display_init:
-			top = self.height - self._bottom_height
-			bottom = self.height
+			top = (self.height - self._colored_strip_height) * int(not self._progress_on_top)
+			bottom = self.height - ((self.height - self._colored_strip_height) * int(self._progress_on_top))
 			left = 0
 
 			try:
@@ -803,25 +811,25 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 					# Printer isn't connected
 					display_string = "Printer Not Connected"
 					text_width = self.draw.textsize(display_string, font=self.font)[0]
-					self.draw.text((self.width / 2 - text_width / 2, top + 6), display_string, font=self.font, fill=255)
+					self.draw.text((self.width / 2 - text_width / 2, top + 4), display_string, font=self.font, fill=255)
 
 				elif current_data['state']['flags']['paused'] or current_data['state']['flags']['pausing']:
 					# Printer paused
 					display_string = "Paused"
 					text_width = self.draw.textsize(display_string, font=self.font)[0]
-					self.draw.text((self.width / 2 - text_width / 2, top + 6), display_string, font=self.font, fill=255)
+					self.draw.text((self.width / 2 - text_width / 2, top + 4), display_string, font=self.font, fill=255)
 
 				elif current_data['state']['flags']['cancelling']:
 					# Printer paused
 					display_string = "Cancelling"
 					text_width = self.draw.textsize(display_string, font=self.font)[0]
-					self.draw.text((self.width / 2 - text_width / 2, top + 6), display_string, font=self.font, fill=255)
+					self.draw.text((self.width / 2 - text_width / 2, top + 4), display_string, font=self.font, fill=255)
 
 				elif current_data['state']['flags']['ready'] and (current_data['progress']['completion'] or 0) < 100:
 					# Printer connected, not printing
 					display_string = "Waiting For Job"
 					text_width = self.draw.textsize(display_string, font=self.font)[0]
-					self.draw.text((self.width / 2 - text_width / 2, top + 6), display_string, font=self.font, fill=255)
+					self.draw.text((self.width / 2 - text_width / 2, top + 4), display_string, font=self.font, fill=255)
 
 				else:
 					percentage = int(current_data['progress']['completion'] or 0)
@@ -831,15 +839,15 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 					time_left = current_data['progress']['printTimeLeft'] or 0
 
 					# Progress bar
-					self.draw.rectangle((0, top + 2, self.width - 1, top + 10), fill=0, outline=255, width=1)
+					self.draw.rectangle((0, top + 0, self.width - 1, top + 5), fill=0, outline=255, width=1)
 					bar_width = int((self.width - 5) * percentage / 100)
-					self.draw.rectangle((2, top + 4, bar_width, top + 8), fill=255, outline=255, width=1)
+					self.draw.rectangle((2, top + 2, bar_width, top + 3), fill=255, outline=255, width=1)
 
 					# Percentage and ETA
-					self.draw.text((0, top + 12), "%s%%" % (percentage), font=self.font, fill=255)
+					self.draw.text((0, top + 5), "%s%%" % (percentage), font=self.font, fill=255)
 					eta = time.strftime(self._eta_strftime, time.localtime(time.time() + time_left))
 					eta_width = self.draw.textsize(eta, font=self.font)[0]
-					self.draw.text((self.width - eta_width, top + 12), eta, font=self.font, fill=255)
+					self.draw.text((self.width - eta_width, top + 5), eta, font=self.font, fill=255)
 			except Exception as ex:
 				self.log_error(ex)
 
