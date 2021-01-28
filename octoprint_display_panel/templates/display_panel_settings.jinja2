@@ -1,15 +1,19 @@
 <form id="settings_display_panel" class="form-horizontal">
 	<div class="tabbable">
 		<h4>{{ _('Display Panel Plugin') }}</h4>
+
 		<ul class="nav nav-tabs" id="display_panel_tabs">
 			<li class="active"><a data-toggle="tab" href="#display_panel_buttons">Buttons</a></li>
 			<li><a data-toggle="tab" href="#display_panel_display">Display</a></li>
 		</ul>
+
 		<div class="tab-content">
+
 			<div id="display_panel_buttons" class="tab-pane active">
+
 				<div class="control-group">
-					<label class="control-label">{{ _('Mode Pin:') }}</label>
-					<div class="controls" data-toggle="tooltip" title="{{ _('Which Raspberry Pi GPIO pin (BCM mode) your Mode switch is attached to.') }}">
+					<label class="control-label">{{ _('Mode Button:') }}</label>
+					<div class="controls" data-toggle="tooltip" title="{{ _('The Raspberry Pi GPIO pin (BCM mode) the Mode button is connected to.') }}">
 						<select data-bind="value: settings.plugins.display_panel.pin_mode">
 							<option value="-1">Disabled</option>
 							<option value="4">GPIO 4</option>
@@ -30,12 +34,13 @@
 							<option value="26">GPIO 26</option>
 							<option value="27">GPIO 27</option>
 						</select>
-						<div class="help-block">{{ _('Which Raspberry Pi GPIO pin your Mode switch is attached to.') }}</div>
+						<div class="help-block">{{ _('The Raspberry Pi GPIO pin the Mode button is connected to.') }}</div>
 					</div>
 				</div>
+
 				<div class="control-group">
-					<label class="control-label">{{ _('Cancel Pin:') }}</label>
-					<div class="controls" data-toggle="tooltip" title="{{ _('Which Raspberry Pi GPIO pin (BCM mode) your Cancel switch is attached to.') }}">
+					<label class="control-label">{{ _('Cancel Button:') }}</label>
+					<div class="controls" data-toggle="tooltip" title="{{ _('The Raspberry Pi GPIO pin (BCM mode) the Cancel button is connected to.') }}">
 						<select data-bind="value: settings.plugins.display_panel.pin_cancel">
 							<option value="-1">Disabled</option>
 							<option value="4">GPIO 4</option>
@@ -56,12 +61,13 @@
 							<option value="26">GPIO 26</option>
 							<option value="27">GPIO 27</option>
 						</select>
-						<div class="help-block">{{ _('Which Raspberry Pi GPIO pin your Cancel switch is attached to.') }}</div>
+						<div class="help-block">{{ _('The Raspberry Pi GPIO pin the Cancel button is connected to.') }}</div>
 					</div>
 				</div>
+
 				<div class="control-group">
-					<label class="control-label">{{ _('Play Pin:') }}</label>
-					<div class="controls" data-toggle="tooltip" title="{{ _('Which Raspberry Pi GPIO pin (BCM mode) your Play switch is attached to.') }}">
+					<label class="control-label">{{ _('Play Button:') }}</label>
+					<div class="controls" data-toggle="tooltip" title="{{ _('The Raspberry Pi GPIO pin (BCM mode) the Play button is connected to.') }}">
 						<select data-bind="value: settings.plugins.display_panel.pin_play">
 							<option value="-1">Disabled</option>
 							<option value="4">GPIO 4</option>
@@ -82,12 +88,13 @@
 							<option value="26">GPIO 26</option>
 							<option value="27">GPIO 27</option>
 						</select>
-						<div class="help-block">{{ _('Which Raspberry Pi GPIO pin your Play switch is attached to.') }}</div>
+						<div class="help-block">{{ _('The Raspberry Pi GPIO pin the Play button is connected to.') }}</div>
 					</div>
 				</div>
+
 				<div class="control-group">
-					<label class="control-label">{{ _('Pause Pin:') }}</label>
-					<div class="controls" data-toggle="tooltip" title="{{ _('Which Raspberry Pi GPIO pin (BCM mode) your Pause switch is attached to.') }}">
+					<label class="control-label">{{ _('Pause Button:') }}</label>
+					<div class="controls" data-toggle="tooltip" title="{{ _('The Raspberry Pi GPIO pin (BCM mode) the Pause button is connected to.') }}">
 						<select data-bind="value: settings.plugins.display_panel.pin_pause">
 							<option value="-1">Disabled</option>
 							<option value="4">GPIO 4</option>
@@ -108,84 +115,91 @@
 							<option value="26">GPIO 26</option>
 							<option value="27">GPIO 27</option>
 						</select>
-						<div class="help-block">{{ _('Which Raspberry Pi GPIO pin your Pause switch is attached to.') }}</div>
+						<div class="help-block">{{ _('The Raspberry Pi GPIO pin the Pause button is connected to.') }}</div>
 					</div>
 				</div>
+
 				<div class="control-group">
 					<label class="control-label">{{ _('Debounce Time:') }}</label>
-					<div class="controls" data-toggle="tooltip" title="{{ _('When press the switches, wait for this amount of time to wait for the signal to stabilize.') }}">
+					<div class="controls" data-toggle="tooltip" title="{{ _('When detecting a button press wait for this period for the signal to stabilize.') }}">
             			<div class="input-append">
 							<input type="number" step="any" min="0" class="input-mini text-right" data-bind="value: settings.plugins.display_panel.debounce">
 							<span class="add-on">ms</span>
 						</div>
-						<div class="help-block">{{ _('When pressing the switches, wait this amount of time for the signal to stabilize. If you experience accidental double clicks, increase this value.') }}</div>
+						<div class="help-block">{{ _('When detecting a button press the Raspberry Pi waits this long for the signal to stabilize. If you experience unintended "double clicks" try increasing this value...') }}
+						</div>
 					</div>
 				</div>
 
 				<div>
-					<a target="_blank" href="https://www.raspberrypi.org/documentation/usage/gpio/">{{ _('Raspberry Pi GPIO pinout') }}</a>
+					{{ _('Further information about the Raspberry Pi GPIO can be found at <a target="_blank" href="https://www.raspberrypi.org/documentation/usage/gpio/">raspberrypi.org</a>, or, for more advanced capabilities see Gadgetoid\'s excellent <a tsarget="_blank" href="https://pinout.xyz/" >interactive pinout diagram</a>.') }}
 				</div>
+
 			</div>
 
 			<div id="display_panel_display" class="tab-pane">
+
 				<div class="control-group">
 					<label class="control-label">{{ _('Display address:') }}</label>
-					<div class="controls data-toggle="tooltip" title="{{ _('Which I2C address to use for display.') }}"">
+					<div class="controls data-toggle="tooltip" title="{{ _('The I&sup2;C address the display uses.') }}"">
 						<select data-bind="value: settings.plugins.display_panel.i2c_address">
 							<option value="0x3c">0x3c</option>
 							<option value="0x3d">0x3d</option>
 						</select>
-						<div class="help-block">{{ _('Which I2C address to use for the display. Normally "0x3c" but can depend on actual model. Can be checked using "i2cdetect -y 1" on console.') }}</div>
+						<div class="help-block">{{ _('The I&sup2;C address the display uses. Normally this is "0x3c" but can depend on the model of the OLED display used. Check using "i2cdetect -y 1" at the console.') }}</div>
 					</div>
 				</div>
+
 				<div class="control-group">
 					<label class="control-label">{{ _('Date format:') }}</label>
-					<div class="controls data-toggle="tooltip" title="{{ _('How to format ETA.') }}"">
+					<div class="controls data-toggle="tooltip" title="{{ _('Format the Time to Completion display.') }}">
 						<input type="text" class="input-block-level" data-bind="value: settings.plugins.display_panel.eta_strftime">
-						<div class="help-block">{{ _('How to format ETA on print screen. Format according to python\'s strftime directives.') }}</div>
+						<div class="help-block">{{ _('Format the Time to Completion display using <a target="blank" href="https://strftime.org/">Python\'s strftime directives</a>.') }}</div>
 					</div>
 				</div>
+
 				<div class="control-group">
 					<label class="control-label">{{ _('Rotate display 180&deg;:') }}</label>
-					<div class="controls" data-toggle="tooltip" title="{{ _('Rotate image on display by 180 degrees.') }}">
+					<div class="controls" data-toggle="tooltip" title="{{ _('Rotate image on display by 180&deg;.') }}">
 						<input class="input-checkbox" type="checkbox" data-bind="checked: settings.plugins.display_panel.image_rotate">
-						<div class="help-block">{{ _('Rotate image on display by 180 degrees.') }}</div>
+						<div class="help-block">{{ _('Rotate image on display by 180&deg;.') }}</div>
 					</div>
 				</div>
+
 				<div class="control-group">
-					<label class="control-label">{{ _('Display timeout for:') }}</label>
-					<div class="controls" data-toggle="tooltip" title="{{ _('How long before display turns off.') }}">
+					<label class="control-label">{{ _('Blank the Display when:') }}</label>
+					<div class="controls data-toggle="tooltip" title="{{ _('Condition triggering the display turning off (after the timeout.') }}"">
+						<select data-bind="value: settings.plugins.display_panel.display_timeout_option">
+							<option value="-1">never</option>
+							<option value="0">printer is disconnected</option>
+							<option value="1">printer is disconnected or idle</option>
+							<option value="2">always</option>
+						</select>
+						<div class="help-block">{{ _('Condition triggering the display turning off after the timeout set below.<br />Paused prints or not printing are considered idle states.<br /> The display will turn on it the status changes; the printer connectes or a print starts for example.') }}</div>
+					</div>
+				</div>
+
+				<div class="control-group">
+					<label class="control-label">{{ _('Display timeout:') }}</label>
+					<div class="controls" data-toggle="tooltip" title="{{ _('Time before turning off the display.') }}">
             			<div class="input-append">
 							<input type="number" step="any" min="1" class="input-mini text-right" data-bind="value: settings.plugins.display_panel.display_timeout_time">
 							<span class="add-on">min</span>
 						</div>
-						<div class="help-block">{{ _('After last button press, wait this amount of time for the display to turn off. The display can be turned on again by pressing any button.') }}</div>
-					</div>
-				</div>
-				<div class="control-group">
-					<label class="control-label">{{ _('Display timeout when:') }}</label>
-					<div class="controls data-toggle="tooltip" title="{{ _('Under which condition the display shall turn off after a certain amount of time.') }}"">
-						<select data-bind="value: settings.plugins.display_panel.display_timeout_option">
-							<option value="-1">never</option>
-							<option value="0">printer is disconnected</option>
-							<option value="1">printer is disconnected/idle</option>
-							<option value="2">always</option>
-						</select>
-						<div class="help-block">{{ _('Under which condition the display shall turn off after a certain amount of time. A paused prints or not printing are considered as idle. Display will be turned on, on status change (e.g. printer gets connected, print starts, print finishes, printer gets disconnected)') }}</div>
-					</div>
-				</div>
-				<div class="control-group">
-					<label class="control-label">{{ _('Time based progress:') }}</label>
-					<div class="controls" data-toggle="tooltip" title="{{ _('Calculate progress by time printed and total print time instead of internally reported percentage.') }}">
-						<input class="input-checkbox" type="checkbox" data-bind="checked: settings.plugins.display_panel.timebased_progress">
-						<div class="help-block">{{ _('Calculate progress by time printed and total print time instead of internally reported percentage.') }}</div>
+						<div class="help-block">{{ _('Time to wait before the display to turn off after the trigger above.<br />(The display can be turned on again by pressing any button.)') }}</div>
 					</div>
 				</div>
 
-				<div>
-					<a target="_blank" href="https://strftime.org/">{{ _('Python\'s strftime directives') }}</a>
+				<div class="control-group">
+					<label class="control-label">{{ _('Time based progress:') }}</label>
+					<div class="controls" data-toggle="tooltip" title="{{ _('Calculate the print progress by using time printed and total print time instead of the internally reported percentage.') }}">
+						<input class="input-checkbox" type="checkbox" data-bind="checked: settings.plugins.display_panel.timebased_progress">
+						<div class="help-block">{{ _('Calculate the print progress by using <em>time printed</em> and <em>total print time</em> instead of the internally reported percentage.') }}</div>
+					</div>
 				</div>
+
 			</div>
+
 		</div>
 	</div>
 </form>
