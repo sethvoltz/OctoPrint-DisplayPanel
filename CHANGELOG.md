@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Z-height display while printing if the DisplayLayerProgress plugin is installed
+
+### Changed
+- Trim down system screen to fit all text
+
 ## [1.3.0] - 2021-01-28
 ### Added
 - Support for bi-color (or two-color) OLED displays, keeping the progress from crossing the section (unclej84)
