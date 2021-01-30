@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Z-height display while printing if the DisplayLayerProgress plugin is installed
+- Pull Request template
 
 ### Changed
 - Trim down system screen to fit all text
