@@ -331,7 +331,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		# for details.
 		return dict(
 			display_panel=dict(
-				displayName="Display Panel Plugin",
+				displayName="OctoPrint Micro Panel",
 				displayVersion=self._plugin_version,
 
 				# version check: github repository
@@ -928,7 +928,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		message = template.format(type(ex).__name__, inspect.currentframe().f_code.co_name, ex.args)
 		self._logger.warn(message)
 
-__plugin_name__ = "Display Panel Plugin"
+__plugin_name__ = "OctoPrint Micro Panel"
 __plugin_pythoncompat__ = ">=3,<4" # only python 3
 
 def __plugin_load__():

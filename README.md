@@ -1,4 +1,4 @@
-# OctoPrint-DisplayPanel
+# OctoPrint Micro Panel (formerly Display Panel)
 
 ![Header image made of photos of the control panel](https://raw.githubusercontent.com/sethvoltz/OctoPrint-DisplayPanel/master/docs/header.jpg)
 
