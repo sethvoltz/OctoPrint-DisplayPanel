@@ -785,8 +785,8 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 					tool = temperatures['tool0'] or None
 					bed = temperatures['bed'] or None
 
-					self.draw.text((left, top + offset + 9), "Head: %s / %s \xb0C" % (tool['actual'], tool['target']), font=self.font, fill=255)
-					self.draw.text((left, top + offset + 18), " Bed: %s / %s \xb0C" % (bed['actual'], bed['target']), font=self.font, fill=255)
+					self.draw.text((left, top + offset + 9), "Head: %s / %s\xb0C" % (tool['actual'], tool['target']), font=self.font, fill=255)
+					self.draw.text((left, top + offset + 18), " Bed: %s / %s\xb0C" % (bed['actual'], bed['target']), font=self.font, fill=255)
 			except Exception as ex:
 				self.log_error(ex)
 
