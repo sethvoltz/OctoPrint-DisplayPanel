@@ -749,11 +749,16 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			try:
 				mem = self._system_stats['memory']
 				disk = self._system_stats['disk']
-				# Write four lines of text.
-				self.draw.text((left, top + offset + 0), "IP: %s" % (self._system_stats['ip']), font=self.font, fill=255)
-				self.draw.text((left, top + offset + 9), "Load: %s, %s, %s" % self._system_stats['load'], font=self.font, fill=255)
-				self.draw.text((left, top + offset + 18), "Mem: %s/%s MB %s%%" % (int(mem.used/1048576), int(mem.total/1048576), mem.percent), font=self.font, fill=255)
-				self.draw.text((left, top + offset + 27), "Disk: %s/%s GB %s%%" % (int(disk.used/1073741824), int((disk.used+disk.total)/1073741824), int(10000*disk.used/(disk.used+disk.free))/100), font=self.font, fill=255)
+
+				# Center IP
+				ip = self._system_stats['ip']
+				tWidth, tHeight = self.draw.textsize(ip)
+				self.draw.text((left + ((self.width - tWidth) / 2), top + offset + 0), ip, font=self.font, fill=255)
+
+				# System Stats
+				self.draw.text((left, top + offset + 9), "L: %s, %s, %s" % self._system_stats['load'], font=self.font, fill=255)
+				self.draw.text((left, top + offset + 18), "M: %s/%s MB %s%%" % (int(mem.used/1048576), int(mem.total/1048576), mem.percent), font=self.font, fill=255)
+				self.draw.text((left, top + offset + 27), "D: %s/%s GB %s%%" % (int(disk.used/1073741824), int((disk.used+disk.total)/1073741824), int(10000*disk.used/(disk.used+disk.free))/100), font=self.font, fill=255)
 			except:
 				self.draw.text((left, top + offset + 9), "Gathering System Stats", font=self.font, fill=255)
 
