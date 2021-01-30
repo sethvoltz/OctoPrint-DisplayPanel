@@ -3,5 +3,5 @@
 
 ## Checklist
 
-[ ] Commit message describes the changes
-[ ] Updated CHANGELOG.md "Unreleased" section with changes
+- [ ] Commit message describes the changes
+- [ ] Updated CHANGELOG.md "Unreleased" section with changes
