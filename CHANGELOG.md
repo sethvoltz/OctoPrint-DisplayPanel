@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Apply changed plugin name to settings panel
 - Trim down printer screen to fit all text
 
+## [2.0.1] - 2021-02-07
+### Changed
+- Apply changed plugin name to settings panel
+- Trim down printer screen to fit all text
+
 ## [2.0.0] - 2021-01-29
 ### Changed
 - Changed plugin name from Display Panel to Micro Panel
@@ -49,7 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release to community, official plugin on the OctoPrint plugin repository.
 
-[Unreleased]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v1.4.0...v2.0.0
 [1.4.0]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v1.2.0...v1.3.0
