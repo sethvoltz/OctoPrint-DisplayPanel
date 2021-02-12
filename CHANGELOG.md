@@ -7,8 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
-- Apply changed plugin name to settings panel
-- Trim down printer screen to fit all text
+- Add missing dependency for RPi.GPIO
 
 ## [2.0.1] - 2021-02-07
 ### Changed
