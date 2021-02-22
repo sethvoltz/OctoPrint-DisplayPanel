@@ -576,9 +576,13 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 	def try_play(self):
 		"""
-		If possible, play or resume a print
+		If printer is not connected, try to connect to it.
+		Otherwise, if possible, play or resume a print
 		"""
 
+		if self._printer.get_current_connection()[0] == "Closed":
+			self._printer.connect()
+		
 		# TODO: If a print is queued up and ready, start it
 		if not self._printer.is_paused():
 			return
