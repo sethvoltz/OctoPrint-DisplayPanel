@@ -379,20 +379,23 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Called by the system check timer on a regular basis. This function should remain small,
 		performant and not block.
 		"""
+		try:
+			if self._screen_mode == ScreenModes.SYSTEM:
+				s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+				s.connect(("8.8.8.8", 80))
+				self._system_stats['ip'] = s.getsockname()[0]
+				s.close()
+				self._system_stats['load'] = psutil.getloadavg()
+				self._system_stats['memory'] = psutil.virtual_memory()
+				self._system_stats['disk'] = shutil.disk_usage('/') # disk percentage = 100 * used / (used + free)
 
-		if self._screen_mode == ScreenModes.SYSTEM:
-			s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-			s.connect(("8.8.8.8", 80))
-			self._system_stats['ip'] = s.getsockname()[0]
-			s.close()
-			self._system_stats['load'] = psutil.getloadavg()
-			self._system_stats['memory'] = psutil.virtual_memory()
-			self._system_stats['disk'] = shutil.disk_usage('/') # disk percentage = 100 * used / (used + free)
-
-			self.update_ui()
-		elif self._screen_mode == ScreenModes.PRINTER:
-			# Just update the UI, the printer mode will take care of itself
-			self.update_ui()
+				self.update_ui()
+			elif self._screen_mode == ScreenModes.PRINTER:
+				# Just update the UI, the printer mode will take care of itself
+				self.update_ui()
+		except Exception as ex:
+			self.log_error(ex)
+			pass
 
 	def setup_display(self):
 		"""
