@@ -582,8 +582,13 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 		if self._printer.get_current_connection()[0] == "Closed":
 			self._printer.connect()
-		
-		# TODO: If a print is queued up and ready, start it
+			return
+
+		current_data = self._printer.get_current_data()
+		if current_data['state']['flags']['ready'] and (current_data['progress']['completion'] or 0) == 0 and current_data['job']['file']['name']:
+			self._printer.start_print()
+			return
+
 		if not self._printer.is_paused():
 			return
 
@@ -850,28 +855,24 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			try:
 				# Clear area
 				self.draw.rectangle((0, top, self.width, bottom), fill=0)
-
+				display_string = ""
 				if self._printer.get_current_connection()[0] == "Closed":
 					# Printer isn't connected
 					display_string = "Printer Not Connected"
-					text_width = self.draw.textsize(display_string, font=self.font)[0]
-					self.draw.text((self.width / 2 - text_width / 2, top + 4), display_string, font=self.font, fill=255)
-
 				elif current_data['state']['flags']['paused'] or current_data['state']['flags']['pausing']:
 					# Printer paused
 					display_string = "Paused"
-					text_width = self.draw.textsize(display_string, font=self.font)[0]
-					self.draw.text((self.width / 2 - text_width / 2, top + 4), display_string, font=self.font, fill=255)
-
 				elif current_data['state']['flags']['cancelling']:
 					# Printer paused
 					display_string = "Cancelling"
-					text_width = self.draw.textsize(display_string, font=self.font)[0]
-					self.draw.text((self.width / 2 - text_width / 2, top + 4), display_string, font=self.font, fill=255)
-
 				elif current_data['state']['flags']['ready'] and (current_data['progress']['completion'] or 0) < 100:
 					# Printer connected, not printing
-					display_string = "Waiting For Job"
+					if current_data['job']['file']['name']:
+						display_string = "Ready to Start"
+					else:
+						display_string = "Waiting For Job"
+
+				if display_string:
 					text_width = self.draw.textsize(display_string, font=self.font)[0]
 					self.draw.text((self.width / 2 - text_width / 2, top + 4), display_string, font=self.font, fill=255)
 
