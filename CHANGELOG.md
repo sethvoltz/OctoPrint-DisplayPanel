@@ -6,15 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [2.1.0] - 2021-02-28
 ### Changed
-- Add missing dependency for RPi.GPIO
-- Trap and log errors in retrieving system stats to avoid getting stuck in "Gathering System Stats"
-- Play button now can be used to connect to a disconnected printer and start a queued job
+- Add missing dependency for RPi.GPIO (unclej84)
+- Trap and log errors in retrieving system stats to avoid getting stuck in "Gathering System Stats" (kgutwin)
+- Play button now can be used to connect to a disconnected printer and start a queued job (kgutwin)
 
 ## [2.0.1] - 2021-02-07
 ### Changed
-- Apply changed plugin name to settings panel
-- Trim down printer screen to fit all text
+- Apply changed plugin name to settings panel (unclej84)
+- Trim down printer screen to fit all text (unclej84)
 
 ## [2.0.0] - 2021-01-29
 ### Changed
@@ -55,7 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release to community, official plugin on the OctoPrint plugin repository.
 
-[Unreleased]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v1.4.0...v2.0.0
 [1.4.0]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v1.3.0...v1.4.0
