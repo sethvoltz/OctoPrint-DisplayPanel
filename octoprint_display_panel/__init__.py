@@ -13,12 +13,11 @@ from octoprint.events import eventManager, Events
 from octoprint.util import RepeatedTimer, ResettableTimer
 import time
 from enum import Enum
-from board import SCL, SDA
-import busio
 from PIL import Image, ImageDraw, ImageFont
 import inspect
-import adafruit_ssd1306
-import RPi.GPIO as GPIO
+
+from . import panels
+from .panels.virtual_panel import VirtualPanelMixin
 
 ## REFACTORING SCOPES
 ##   Changes to the following are scoped to a specific branch, and should
@@ -72,7 +71,8 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
                           octoprint.plugin.EventHandlerPlugin,
                           octoprint.plugin.ProgressPlugin,
                           octoprint.plugin.TemplatePlugin,
-                          octoprint.plugin.SettingsPlugin):
+                          octoprint.plugin.SettingsPlugin,
+                          VirtualPanelMixin):
 
 	_area_offset = 3
 	_cancel_requested_at = 0
@@ -382,23 +382,6 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 	##~~ Helpers
 
-	def bcm2board(self, bcm_pin):
-		"""
-		Function to translate bcm pin to board pin
-		"""
-
-		board_pin = -1
-		if bcm_pin != -1:
-			_bcm2board = [
-				-1, -1, -1,  7, 29, 31,
-				-1, -1, -1, -1, -1, 32,
-				33, -1, -1, 36, 11, 12,
-				35, 38, 40, 15, 16, 18,
-				22, 37, 13
-				]
-			board_pin=_bcm2board[bcm_pin-1]
-		return board_pin
-
 	def start_system_timer(self):
 		"""
 		Function to check system stats periodically
@@ -438,10 +421,9 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 
 		try:
-			self.i2c = busio.I2C(SCL, SDA)
-			self.disp = adafruit_ssd1306.SSD1306_I2C(128, 64, self.i2c, addr=int(self._i2c_address,0))
-			self._logger.info("Setting display to I2C address %s", self._i2c_address)
-			self._display_init = True
+			self.disp = panels.Panels(self._settings,
+						  self.handle_button_press)
+
 			self.font = ImageFont.load_default()
 			self.width = self.disp.width
 			self.height = self.disp.height
