@@ -1,3 +1,5 @@
+// This defines a basic API client to correspond to the simple API
+// implemented by the virtual panel.
 (function (global, factory) {
     if (typeof define === "function" && define.amd) {
         define(["OctoPrintClient"], factory);

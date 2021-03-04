@@ -15,13 +15,19 @@ def bcm2board(bcm_pin):
 
 
 class MicroPanel:
+    """Interface to the standard I2C and GPIO-driven Micro Panel.
+    """
     width = 128
     height = 64
     
     def __init__(self, button_callback):
         self.button_event_callback = button_callback
+        self.gpio_pinset = set()
         
     def setup(self, settings):
+        """Apply settings from OctoPrint's SettingsPlugin mixin to
+        configure the panel.
+        """
         self.i2c_address = int(settings.get(['i2c_address'], merged=True), 0)
         self.input_pinset = {
             settings.get_int([f'pin_{p}'], merged=True): p
@@ -57,8 +63,23 @@ class MicroPanel:
             GPIO.add_event_detect(gpio_pin, GPIO.FALLING,
                                   callback=self.handle_gpio_event,
                                   bouncetime=self.debounce_time)
+            self.gpio_pinset.add(gpio_pin)
+
+        # clean up any pins that may not be selected any more
+        cleaned_pins = set()
+        for gpio_pin in self.gpio_pinset.difference(self.input_pinset.keys()):
+            try:
+                GPIO.remove_event_detect(gpio_pin)
+                GPIO.cleanup(gpio_pin)
+            except:
+                logger.exception(f'failed to clean up GPIO pin {gpio_pin}')
+            else:
+                cleaned_pins.add(gpio_pin)
+        self.gpio_pinset.difference_update(cleaned_pins)
 
     def shutdown(self):
+        """Called during plugin shutdown.
+        """
         for gpio_pin in self.input_pinset:
             if gpio_pin == -1:
                 continue
@@ -66,21 +87,34 @@ class MicroPanel:
             GPIO.cleanup(gpio_pin)
             
     def fill(self, v):
+        """Fill the screen with the specified color.
+        """
         self.disp.fill(v)
 
+    def image(self, img):
+        """Set an image to be shown on screen.
+        """
+        self.disp.image(img)
+
     def show(self):
+        """Show the currently set image on the screen.
+        """
         self.disp.show()
 
     def poweroff(self):
+        """Turn the display off.
+        """
         self.disp.poweroff()
 
     def poweron(self):
+        """Turn the display on.
+        """
         self.disp.poweron()
 
-    def image(self, img):
-        self.disp.image(img)
-
     def handle_gpio_event(self, channel):
+        """Called on a GPIO event, translate an input channel to a button label
+        and invokes the button callback function with that label.
+        """
         if channel not in self.input_pinset:
             return
 

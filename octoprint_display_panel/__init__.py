@@ -84,10 +84,8 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 	_displaylayerprogress_current_layer = -1
 	_displaylayerprogress_total_height = -1.0
 	_displaylayerprogress_total_layer = -1
-	_display_timeout_active = False
 	_display_timeout_option = 0	# -1 - deactivated, 0 - printer disconnected, 1 - disconnected/connected but idle, 2 - always
 	_display_timeout_time = 0
-	_display_timeout_timer = None
 	_etl_format = "{hours:02d}h {minutes:02d}m {seconds:02d}s"
 	_eta_strftime = ""
 	_gpio_init = False
@@ -120,13 +118,10 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 
 		self.setup_display()
-		self.setup_gpio()
-		self.configure_gpio()
 		self.clear_display()
 		self.check_system_stats()
 		self.start_system_timer()
 		self.update_ui()
-		self.start_display_timer()
 
 	##~~ ShutdownPlugin mixin
 
@@ -135,9 +130,8 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		ShutdownPlugin lifecycle hook, called before Octoprint shuts down
 		"""
 
-		self.stop_display_timer()
 		self.clear_display()
-		self.clean_gpio()
+		self.shutdown_display()
 
 	##~~ EventHandlerPlugin mixin
 
@@ -289,70 +283,35 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		self._pin_mode = int(self._settings.get(["pin_mode"]))
 		self._pin_pause = int(self._settings.get(["pin_pause"]))
 		self._pin_play = int(self._settings.get(["pin_play"]))
-		pins_updated = 0
-		try:
-			if self._i2c_address.lower() != self._last_i2c_address.lower() or \
-			self._image_rotate != self._last_image_rotate:
-				self.clear_display()
-				self._display_init = False
-				self._last_i2c_address = self._i2c_address
-				self._last_image_rotate = self._image_rotate
-				self.setup_display()
-				self.clear_display()
-				self.check_system_stats()
-				self.start_system_timer()
-				self._screen_mode = ScreenModes.SYSTEM
-				self.update_ui()
 
-			if self._pin_cancel != self._last_pin_cancel:
-				pins_updated = pins_updated + 1
-				self.clean_single_gpio(self._last_pin_cancel)
-			if self._pin_mode != self._last_pin_mode:
-				pins_updated = pins_updated + 2
-				self.clean_single_gpio(self._last_pin_mode)
-			if self._pin_pause != self._last_pin_pause:
-				pins_updated = pins_updated + 4
-				self.clean_single_gpio(self._last_pin_pause)
-			if self._pin_play != self._last_pin_play:
-				pins_updated = pins_updated + 8
-				self.clean_single_gpio(self._last_pin_play)
-
-			self._gpio_init = False
-			self.setup_gpio()
-
-			if pins_updated == (pow(2, 4) - 1) or self._debounce != self._last_debounce:
-				self.configure_gpio()
-				pins_updated = 0
-
-			if pins_updated >= pow(2, 3):
-				self.configure_single_gpio(self._pin_play)
-				pins_updated = pins_updated - pow(2, 3)
-			if pins_updated >= pow(2, 2):
-				self.configure_single_gpio(self._pin_pause)
-				pins_updated = pins_updated - pow(2, 2)
-			if pins_updated >= pow(2, 1):
-				self.configure_single_gpio(self._pin_mode)
-				pins_updated = pins_updated - pow(2, 1)
-			if pins_updated >= pow(2, 0):
-				self.configure_single_gpio(self._pin_cancel)
-				pins_updated = pins_updated - pow(2, 0)
-			if pins_updated > 0:
-				self.log_error("Something went wrong counting updated GPIO pins")
-
-			if self._display_timeout_option != self._last_display_timeout_option or \
-			self._display_timeout_time != self._last_display_timeout_time:
-				self.start_display_timer(self._display_timeout_time != self._last_display_timeout_time)
-
-			self._last_debounce = self._debounce
-			self._last_display_timeout_option = self._display_timeout_option
-			self._last_display_timeout_time = self._display_timeout_time
+		display_needs_update = any([
+			self._i2c_address.lower() != self._last_i2c_address.lower(),
+			self._image_rotate != self._last_image_rotate,
+			self._pin_cancel != self._last_pin_cancel,
+			self._pin_mode != self._last_pin_mode,
+			self._pin_pause != self._last_pin_pause,
+			self._pin_play != self._last_pin_play,
+			self._debounce != self._last_debounce,
+			self._display_timeout_time != self._last_display_timeout_time,
+			self._display_timeout_option != self._last_display_timeout_option,
+		])
+		if display_needs_update:
+			self.clear_display()
+			self._display_init = False
+			self.setup_display()
+			self._last_i2c_address = self._i2c_address
+			self._last_image_rotate = self._image_rotate
 			self._last_pin_cancel = self._pin_cancel
 			self._last_pin_mode = self._pin_mode
-			self._last_pin_play = self._pin_play
 			self._last_pin_pause = self._pin_pause
-		except Exception as ex:
-			self.log_error(ex)
-			pass
+			self._last_pin_play = self._pin_play
+			self._last_debounce = self._debounce
+			self.clear_display()
+			self.check_system_stats()
+			self.start_system_timer()
+			self._screen_mode = ScreenModes.SYSTEM
+			self.update_ui()
+		
 
 	##~~ Softwareupdate hook
 
@@ -420,9 +379,16 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Intialize display
 		"""
 
+		
 		try:
-			self.disp = panels.Panels(self._settings,
-						  self.handle_button_press)
+			if self._display_init:
+				self.disp.setup(self._settings)
+			else:
+				self.disp = panels.Panels(
+					self._settings,
+					self.handle_button_press
+				)
+				
 			self._display_init = True
 
 			self.font = ImageFont.load_default()
@@ -435,120 +401,16 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			self.log_error(ex)
 			pass
 
-	def setup_gpio(self):
+	def shutdown_display(self):
+		"""Shut down display panels.
 		"""
-		Setup GPIO to use BCM pin numbering, unless already setup in which case fall back and update
-		globals to reflect change.
-		"""
-		pass
-
-#		self.BCM_PINS = {
-#			self._pin_mode: 'mode',
-#			self._pin_cancel: 'cancel',
-#			self._pin_play: 'play',
-#			self._pin_pause: 'pause'
-#			}
-#		self.BOARD_PINS = {
-#			self.bcm2board(self._pin_mode) : 'mode',
-#			self.bcm2board(self._pin_cancel): 'cancel',
-#			self.bcm2board(self._pin_play): 'play',
-#			self.bcm2board(self._pin_pause): 'pause'
-#			}
-#		self.input_pinset = self.BCM_PINS
-#
-#		try:
-#			current_mode = GPIO.getmode()
-#			set_mode = GPIO.BCM
-#			if current_mode is None:
-#				GPIO.setmode(set_mode)
-#				self.input_pinset = self.BCM_PINS
-#				self._logger.info("Setting GPIO mode to BCM numbering")
-#			elif current_mode != set_mode:
-#				GPIO.setmode(current_mode)
-#				self.input_pinset = self.BOARD_PINS
-#				self._logger.info("GPIO mode was already set, adapting to use BOARD numbering")
-#			GPIO.setwarnings(False)
-#			self._gpio_init = True
-#		except Exception as ex:
-#			self.log_error(ex)
-#			pass
-
-	def configure_gpio(self):
-		"""
-		Setup the GPIO pins to handle the buttons as inputs with built-in pull-up resistors
-		"""
-		pass
-#		if self._gpio_init:
-#			for gpio_pin in self.input_pinset:
-#				self.configure_single_gpio(gpio_pin)
-
-	def configure_single_gpio(self, gpio_pin):
-		"""
-		Setup the GPIO pins to handle the buttons as inputs with built-in pull-up resistors
-		"""
-		pass
-#		if self._gpio_init:
-#			try:
-#				if gpio_pin != -1:
-#					GPIO.setup(gpio_pin, GPIO.IN, GPIO.PUD_UP)
-#					GPIO.remove_event_detect(gpio_pin)
-#					self._logger.info("Adding GPIO event detect on pin %s with edge: FALLING", gpio_pin)
-#					GPIO.add_event_detect(gpio_pin, GPIO.FALLING, callback=self.handle_gpio_event, bouncetime=self._debounce)
-#			except Exception as ex:
-#				self.log_error(ex)
-
-	def clean_gpio(self):
-		"""
-		Remove event detection and clean up for all pins (`mode`, `cancel`, `play` and `pause`)
-		"""
-		pass
-#		if self._gpio_init:
-#			for gpio_pin in self.input_pinset:
-#				self.clean_single_gpio(gpio_pin)
-
-	def clean_single_gpio(self, gpio_pin):
-		"""
-		Remove event detection and clean up for all pins (`mode`, `cancel`, `play` and `pause`)
-		"""
-		pass
-#		if self._gpio_init:
-#			if gpio_pin!=-1:
-#				try:
-#					GPIO.remove_event_detect(gpio_pin)
-#				except Exception as ex:
-#					self.log_error(ex)
-#					pass
-#				try:
-#					GPIO.cleanup(gpio_pin)
-#				except Exception as ex:
-#					self.log_error(ex)
-#					pass
-#				self._logger.info("Removed GPIO pin %s", gpio_pin)
-
-#	def handle_gpio_event(self, channel):
-#		"""
-#		Event callback for GPIO event, called from `add_event_detect` setup in `configure_gpio`
-#		"""
-#
-#		try:
-#			if channel in self.input_pinset:
-#				if self._display_timeout_active:
-#					self.start_display_timer()
-#					return
-#				else:
-#					self.start_display_timer()
-#				label = self.input_pinset[channel]
-#
-#				self.handle_button_press(label)
-#		except Exception as ex:
-#			self.log_error(ex)
-#			pass
+		self.disp.shutdown()
+		
 
 	def handle_button_press(self, label):
 		"""
 		Take action on a button press with the given name (such as 'cancel' or 'play')
 		"""
-
 		try:
 			if label == 'cancel':
 				self.try_cancel()
@@ -665,56 +527,11 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			if event in (Events.PRINT_STARTED, Events.PRINT_RESUMED):
 				self._printer_state = 2
 
-			if self._printer_state != self._last_printer_state:
-				self.start_display_timer(True)
-				self._last_printer_state = self._printer_state
-		return
+			self.disp.update_timer(self._printer_state)
 
 	def start_display_timer(self, reconfigure=False):
-		"""
-		Start timer for display timeout
-		"""
-
-		do_reset = False
-		if self._display_timeout_timer is not None:
-			if reconfigure:
-				self.stop_display_timer()
-			else:
-				do_reset = True
-
-		if do_reset:
-			self._display_timeout_timer.reset()
-		else:
-			if self._printer_state <= self._display_timeout_option:
-				self._display_timeout_timer = ResettableTimer(self._display_timeout_time * 60, self.trigger_display_timeout, [True], None, True)
-				self._display_timeout_timer.start()
-			if self._display_timeout_active:
-				self.trigger_display_timeout(False)
-		return
-
-	def stop_display_timer(self):
-		"""
-		Stop timer for display timeout
-		"""
-
-		if self._display_timeout_timer is not None:
-			self._display_timeout_timer.cancel()
-			self._display_timeout_timer = None
-		return
-
-	def trigger_display_timeout(self, activate):
-		"""
-		Set display off on activate == True and on on activate == False
-		"""
-
-		self._display_timeout_active = activate
-		if self._display_init:
-			if activate:
-				self.stop_display_timer()
-				self.disp.poweroff()
-			else:
-				self.disp.poweron()
-		return
+		# Vestigial, should be deleted
+		pass
 
 	def update_ui(self):
 		"""
