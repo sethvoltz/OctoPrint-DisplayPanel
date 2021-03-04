@@ -1,9 +1,12 @@
 try:
     from . import micro_panel
-except ImportError:
+except (NotImplementedError, ImportError):
     micro_panel = None
 
 from . import virtual_panel
+
+import logging
+logger = logging.getLogger("octoprint.plugins.display_panel.virtual_panel")
 
 
 class Panels:

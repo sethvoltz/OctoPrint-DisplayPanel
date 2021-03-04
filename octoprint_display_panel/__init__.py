@@ -423,6 +423,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		try:
 			self.disp = panels.Panels(self._settings,
 						  self.handle_button_press)
+			self._display_init = True
 
 			self.font = ImageFont.load_default()
 			self.width = self.disp.width
@@ -439,108 +440,109 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Setup GPIO to use BCM pin numbering, unless already setup in which case fall back and update
 		globals to reflect change.
 		"""
+		pass
 
-		self.BCM_PINS = {
-			self._pin_mode: 'mode',
-			self._pin_cancel: 'cancel',
-			self._pin_play: 'play',
-			self._pin_pause: 'pause'
-			}
-		self.BOARD_PINS = {
-			self.bcm2board(self._pin_mode) : 'mode',
-			self.bcm2board(self._pin_cancel): 'cancel',
-			self.bcm2board(self._pin_play): 'play',
-			self.bcm2board(self._pin_pause): 'pause'
-			}
-		self.input_pinset = self.BCM_PINS
-
-		try:
-			current_mode = GPIO.getmode()
-			set_mode = GPIO.BCM
-			if current_mode is None:
-				GPIO.setmode(set_mode)
-				self.input_pinset = self.BCM_PINS
-				self._logger.info("Setting GPIO mode to BCM numbering")
-			elif current_mode != set_mode:
-				GPIO.setmode(current_mode)
-				self.input_pinset = self.BOARD_PINS
-				self._logger.info("GPIO mode was already set, adapting to use BOARD numbering")
-			GPIO.setwarnings(False)
-			self._gpio_init = True
-		except Exception as ex:
-			self.log_error(ex)
-			pass
+#		self.BCM_PINS = {
+#			self._pin_mode: 'mode',
+#			self._pin_cancel: 'cancel',
+#			self._pin_play: 'play',
+#			self._pin_pause: 'pause'
+#			}
+#		self.BOARD_PINS = {
+#			self.bcm2board(self._pin_mode) : 'mode',
+#			self.bcm2board(self._pin_cancel): 'cancel',
+#			self.bcm2board(self._pin_play): 'play',
+#			self.bcm2board(self._pin_pause): 'pause'
+#			}
+#		self.input_pinset = self.BCM_PINS
+#
+#		try:
+#			current_mode = GPIO.getmode()
+#			set_mode = GPIO.BCM
+#			if current_mode is None:
+#				GPIO.setmode(set_mode)
+#				self.input_pinset = self.BCM_PINS
+#				self._logger.info("Setting GPIO mode to BCM numbering")
+#			elif current_mode != set_mode:
+#				GPIO.setmode(current_mode)
+#				self.input_pinset = self.BOARD_PINS
+#				self._logger.info("GPIO mode was already set, adapting to use BOARD numbering")
+#			GPIO.setwarnings(False)
+#			self._gpio_init = True
+#		except Exception as ex:
+#			self.log_error(ex)
+#			pass
 
 	def configure_gpio(self):
 		"""
 		Setup the GPIO pins to handle the buttons as inputs with built-in pull-up resistors
 		"""
-
-		if self._gpio_init:
-			for gpio_pin in self.input_pinset:
-				self.configure_single_gpio(gpio_pin)
+		pass
+#		if self._gpio_init:
+#			for gpio_pin in self.input_pinset:
+#				self.configure_single_gpio(gpio_pin)
 
 	def configure_single_gpio(self, gpio_pin):
 		"""
 		Setup the GPIO pins to handle the buttons as inputs with built-in pull-up resistors
 		"""
-
-		if self._gpio_init:
-			try:
-				if gpio_pin != -1:
-					GPIO.setup(gpio_pin, GPIO.IN, GPIO.PUD_UP)
-					GPIO.remove_event_detect(gpio_pin)
-					self._logger.info("Adding GPIO event detect on pin %s with edge: FALLING", gpio_pin)
-					GPIO.add_event_detect(gpio_pin, GPIO.FALLING, callback=self.handle_gpio_event, bouncetime=self._debounce)
-			except Exception as ex:
-				self.log_error(ex)
+		pass
+#		if self._gpio_init:
+#			try:
+#				if gpio_pin != -1:
+#					GPIO.setup(gpio_pin, GPIO.IN, GPIO.PUD_UP)
+#					GPIO.remove_event_detect(gpio_pin)
+#					self._logger.info("Adding GPIO event detect on pin %s with edge: FALLING", gpio_pin)
+#					GPIO.add_event_detect(gpio_pin, GPIO.FALLING, callback=self.handle_gpio_event, bouncetime=self._debounce)
+#			except Exception as ex:
+#				self.log_error(ex)
 
 	def clean_gpio(self):
 		"""
 		Remove event detection and clean up for all pins (`mode`, `cancel`, `play` and `pause`)
 		"""
-
-		if self._gpio_init:
-			for gpio_pin in self.input_pinset:
-				self.clean_single_gpio(gpio_pin)
+		pass
+#		if self._gpio_init:
+#			for gpio_pin in self.input_pinset:
+#				self.clean_single_gpio(gpio_pin)
 
 	def clean_single_gpio(self, gpio_pin):
 		"""
 		Remove event detection and clean up for all pins (`mode`, `cancel`, `play` and `pause`)
 		"""
+		pass
+#		if self._gpio_init:
+#			if gpio_pin!=-1:
+#				try:
+#					GPIO.remove_event_detect(gpio_pin)
+#				except Exception as ex:
+#					self.log_error(ex)
+#					pass
+#				try:
+#					GPIO.cleanup(gpio_pin)
+#				except Exception as ex:
+#					self.log_error(ex)
+#					pass
+#				self._logger.info("Removed GPIO pin %s", gpio_pin)
 
-		if self._gpio_init:
-			if gpio_pin!=-1:
-				try:
-					GPIO.remove_event_detect(gpio_pin)
-				except Exception as ex:
-					self.log_error(ex)
-					pass
-				try:
-					GPIO.cleanup(gpio_pin)
-				except Exception as ex:
-					self.log_error(ex)
-					pass
-				self._logger.info("Removed GPIO pin %s", gpio_pin)
-
-	def handle_gpio_event(self, channel):
-		"""
-		Event callback for GPIO event, called from `add_event_detect` setup in `configure_gpio`
-		"""
-
-		try:
-			if channel in self.input_pinset:
-				if self._display_timeout_active:
-					self.start_display_timer()
-					return
-				else:
-					self.start_display_timer()
-				label = self.input_pinset[channel]
-
-				self.handle_button_press(label)
-		except Exception as ex:
-			self.log_error(ex)
-			pass
+#	def handle_gpio_event(self, channel):
+#		"""
+#		Event callback for GPIO event, called from `add_event_detect` setup in `configure_gpio`
+#		"""
+#
+#		try:
+#			if channel in self.input_pinset:
+#				if self._display_timeout_active:
+#					self.start_display_timer()
+#					return
+#				else:
+#					self.start_display_timer()
+#				label = self.input_pinset[channel]
+#
+#				self.handle_button_press(label)
+#		except Exception as ex:
+#			self.log_error(ex)
+#			pass
 
 	def handle_button_press(self, label):
 		"""
@@ -961,9 +963,10 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Helper function for more complete logging on exceptions
 		"""
 
-		template = "An exception of type {0} occurred on {1}. Arguments: {2!r}"
-		message = template.format(type(ex).__name__, inspect.currentframe().f_code.co_name, ex.args)
-		self._logger.warn(message)
+		#template = "An exception of type {0} occurred on {1}. Arguments: {2!r}"
+		#message = template.format(type(ex).__name__, inspect.currentframe().f_code.co_name, ex.args)
+		#self._logger.warn(message)
+		self._logger.exception("Micro Panel exception")
 
 __plugin_name__ = "OctoPrint Micro Panel"
 __plugin_pythoncompat__ = ">=3,<4" # only python 3
