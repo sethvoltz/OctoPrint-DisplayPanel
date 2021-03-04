@@ -7,19 +7,36 @@ $(function() {
 	self.currentImg = ko.observable();
 
 	self.fetchImg = function () {
-	    console.log("fetching...");
 	    OctoPrint.plugins.display_panel.get().done(self.fromResponse);
 	}
 
 	self.fromResponse = function(data) {
-	    console.log("got response!");
-	    console.log(data);
 	    self.currentImg(data.image_data);
 	}
 
 	self.onStartupComplete = function () {
-	    console.log("On startup complete");
 	    self.fetchImg();
+	}
+
+	self.btnRefresh = function() {
+	    self.fetchImg();
+	}
+
+	self.btnMenu = function() {
+	    OctoPrint.plugins.display_panel.press('mode')
+		.done(self.fromResponse);
+	}
+	self.btnCancel = function() {
+	    OctoPrint.plugins.display_panel.press('cancel')
+		.done(self.fromResponse);
+	}
+	self.btnPlay = function() {
+	    OctoPrint.plugins.display_panel.press('play')
+		.done(self.fromResponse);
+	}
+	self.btnPause = function() {
+	    OctoPrint.plugins.display_panel.press('pause')
+		.done(self.fromResponse);
 	}
     }
 

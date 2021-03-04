@@ -15,7 +15,7 @@
 
     OctoPrintMicroPanelClient.prototype.press = function (label, opts) {
         var data = {
-            label: label
+            button: label
         };
         return this.base.simpleApiCommand("display_panel", "press", data, opts);
     };

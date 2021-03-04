@@ -29,16 +29,27 @@ class VirtualPanelMixin(octoprint.plugin.SimpleApiPlugin,
         image_encoded = base64.b64encode(image_data).decode('ascii')
         cls._VP_ACTIVE_COMM['image_data'] = 'data:image/png;base64,' + image_encoded
 
+    # ~ SimpleApiPlugin
+        
     def get_api_commands(self):
         return {'press': ['button']}
 
     def on_api_command(self, command, data):
         self._logger.info(f'command was {command} and data {data}')
-        self._VP_ACTIVE_COMM['button_callback'](data['button'])
+        if command == 'press':
+            try:
+                self._VP_ACTIVE_COMM['button_callback'](data['button'])
+            except ValueError:
+                return flask.abort(
+                    400, f"{data['button']} is not a valid button name"
+                )
+        return self.on_api_get(None)
 
     def on_api_get(self, request):
         return flask.jsonify(image_data=self._VP_ACTIVE_COMM['image_data'])
 
+    # ~ AssetPlugin
+    
     def get_assets(self):
         return {
             "js": ["js/display_panel.js"],

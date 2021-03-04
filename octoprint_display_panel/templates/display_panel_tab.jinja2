@@ -1,2 +1,19 @@
 <h3>Micro Panel</h3>
-<img data-bind="attr: {src: currentImg}" style="width: 400px; border: 5px solid black">
+<div>
+  <img data-bind="attr: {src: currentImg}" style="width: 400px; border: 5px solid black">
+</div>
+<div>
+  <button class="btn box" data-bind="click: btnMenu"><b>M</b></button>
+  <button class="btn box" data-bind="click: btnCancel">
+    <i class="fas fa-times"></i>
+  </button>
+  <button class="btn box" data-bind="click: btnPlay">
+    <i class="fas fa-play"></i>
+  </button>
+  <button class="btn box" data-bind="click: btnPause">
+    <i class="fas fa-pause"></i>
+  </button>
+  <button class="btn box" data-bind="click: btnRefresh">
+    <i class="fas fa-sync"></i>
+  </button>
+</div>
