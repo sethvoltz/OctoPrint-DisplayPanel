@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixes
+- Fix off-by-one issue with bi-color section on display
+
 ## [2.1.0] - 2021-02-28
 ### Changed
 - Add missing dependency for RPi.GPIO (unclej84)
