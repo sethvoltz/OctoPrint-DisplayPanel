@@ -42,7 +42,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 	_area_offset = 3
 	_cancel_requested_at = 0
 	_cancel_timer = None
-	_colored_strip_height = 16 # height of colored strip on top for dual color display
+	_colored_strip_height = 15 # height of colored strip on top for dual color display
 	_debounce = 0
 	_display_init = False
 	_displaylayerprogress_current_height = -1.0
