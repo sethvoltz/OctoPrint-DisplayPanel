@@ -90,5 +90,8 @@ class VirtualPanel:
         self._hold_image = None
 
     def image(self, img):
-        self._image = img
-        self._hold_image = None
+        if self._hold_image is None:
+            self._image = img
+        else:
+            self._hold_image = img
+

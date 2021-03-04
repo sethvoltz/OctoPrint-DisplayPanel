@@ -22,7 +22,7 @@ class MicroPanel:
         self.button_event_callback = button_callback
         
     def setup(self, settings):
-        self.i2c_address = settings.get(['i2c_address'], merged=True)
+        self.i2c_address = int(settings.get(['i2c_address'], merged=True), 0)
         self.input_pinset = {
             settings.get_int([f'pin_{p}'], merged=True): p
             for p in ['cancel', 'mode', 'pause', 'play']
@@ -45,7 +45,7 @@ class MicroPanel:
             GPIO.setmode(current_mode)
             self.input_pinset = {bcm2board(p): l
                                  for p, l in self.input_pinset.items()}
-        GPIO.setwarnings(false)
+        GPIO.setwarnings(False)
 
         # set up pins
         for gpio_pin in self.input_pinset:

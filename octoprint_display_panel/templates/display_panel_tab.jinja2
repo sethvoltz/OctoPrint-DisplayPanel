@@ -1,6 +1,6 @@
 <h3>Micro Panel</h3>
 <div>
-  <img data-bind="attr: {src: currentImg}" style="width: 400px; border: 5px solid black">
+  <img id="micropanel" data-bind="attr: {src: currentImg}" style="width: 400px; border: 5px solid black">
 </div>
 <div>
   <button class="btn box" data-bind="click: btnMenu"><b>M</b></button>
@@ -17,3 +17,31 @@
     <i class="fas fa-sync"></i>
   </button>
 </div>
+<script>
+  // keep the screen refreshed when it is visible
+  function respondToVisibility(element, callback) {
+    var options = {
+      root: document.documentElement,
+    };
+  
+    var observer = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        callback(element, entry.intersectionRatio > 0);
+      });
+    }, options);
+  
+    observer.observe(element);
+  }
+
+  var refreshIntervalId;
+
+  respondToVisibility(document.getElementById('micropanel'), (elem, vis) => {
+    if (vis) {
+      let model = ko.contextFor(elem).$data;
+      model.fetchImg();
+      refreshIntervalId = window.setInterval(model.fetchImg, 1000);
+    } else {
+      clearInterval(refreshIntervalId);
+    }
+  });
+</script>
