@@ -78,32 +78,14 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 	_cancel_requested_at = 0
 	_cancel_timer = None
 	_colored_strip_height = 15 # height of colored strip on top for dual color display
-	_debounce = 0
 	_display_init = False
 	_displaylayerprogress_current_height = -1.0
 	_displaylayerprogress_current_layer = -1
 	_displaylayerprogress_total_height = -1.0
 	_displaylayerprogress_total_layer = -1
-	_display_timeout_option = 0	# -1 - deactivated, 0 - printer disconnected, 1 - disconnected/connected but idle, 2 - always
-	_display_timeout_time = 0
 	_etl_format = "{hours:02d}h {minutes:02d}m {seconds:02d}s"
 	_eta_strftime = ""
-	_gpio_init = False
 	_image_rotate = False
-	_last_debounce = 0
-	_last_display_timeout_option = 0	# -1 - deactivated, 0 - printer disconnected, 1 - disconnected/connected but idle, 2 - always
-	_last_display_timeout_time = 0
-	_last_i2c_address = ""
-	_last_image_rotate = False
-	_last_pin_cancel = -1
-	_last_pin_mode = -1
-	_last_pin_pause = -1
-	_last_pin_play = -1
-	_last_printer_state = 0	# 0 - disconnected, 1 - connected but idle, 2 - printing
-	_pin_cancel = -1
-	_pin_mode = -1
-	_pin_pause = -1
-	_pin_play = -1
 	_printer_state = 0	# 0 - disconnected, 1 - connected but idle, 2 - printing
 	_progress_on_top = False
 	_screen_mode = ScreenModes.SYSTEM
@@ -222,29 +204,11 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Prepare variables for setting modification detection
 		"""
 
-		self._debounce = int(self._settings.get(["debounce"]))
 		self._display_init = False
-		self._display_timeout_option = int(self._settings.get(["display_timeout_option"]))
-		self._display_timeout_time = int(self._settings.get(["display_timeout_time"]))
 		self._eta_strftime = str(self._settings.get(["eta_strftime"]))
-		self._gpio_init = False
-		self._i2c_address = str(self._settings.get(["i2c_address"]))
 		self._image_rotate = bool(self._settings.get(["image_rotate"]))
-		self._pin_cancel = int(self._settings.get(["pin_cancel"]))
-		self._pin_mode = int(self._settings.get(["pin_mode"]))
-		self._pin_pause = int(self._settings.get(["pin_pause"]))
-		self._pin_play = int(self._settings.get(["pin_play"]))
 		self._progress_on_top = bool(self._settings.get(["progress_on_top"]))
 		self._screen_mode = ScreenModes.SYSTEM
-		self._last_debounce = self._debounce
-		self._last_display_timeout_option = self._display_timeout_option
-		self._last_display_timeout_time = self._display_timeout_time
-		self._last_i2c_address = self._i2c_address
-		self._last_image_rotate = False
-		self._last_pin_cancel = self._pin_cancel
-		self._last_pin_mode = self._pin_mode
-		self._last_pin_pause = self._pin_pause
-		self._last_pin_play = self._pin_play
 		self._timebased_progress = bool(self._settings.get(["timebased_progress"]))
 
 	def get_settings_defaults(self):
@@ -271,73 +235,21 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 		SettingsPlugin lifecycle hook, called when settings are saved
 		"""
-
+		previous = self._settings.get_all_data()
+                
 		octoprint.plugin.SettingsPlugin.on_settings_save(self, data)
-		self._debounce = int(self._settings.get(["debounce"]))
-		self._display_timeout_option = int(self._settings.get(["display_timeout_option"]))
-		self._display_timeout_time = int(self._settings.get(["display_timeout_time"]))
-		self._eta_strftime = str(self._settings.get(["eta_strftime"]))
-		self._i2c_address = str(self._settings.get(["i2c_address"]))
-		self._image_rotate = bool(self._settings.get(["image_rotate"]))
-		self._pin_cancel = int(self._settings.get(["pin_cancel"]))
-		self._pin_mode = int(self._settings.get(["pin_mode"]))
-		self._pin_pause = int(self._settings.get(["pin_pause"]))
-		self._pin_play = int(self._settings.get(["pin_play"]))
 
-		display_needs_update = any([
-			self._i2c_address.lower() != self._last_i2c_address.lower(),
-			self._image_rotate != self._last_image_rotate,
-			self._pin_cancel != self._last_pin_cancel,
-			self._pin_mode != self._last_pin_mode,
-			self._pin_pause != self._last_pin_pause,
-			self._pin_play != self._last_pin_play,
-			self._debounce != self._last_debounce,
-			self._display_timeout_time != self._last_display_timeout_time,
-			self._display_timeout_option != self._last_display_timeout_option,
-		])
-		if display_needs_update:
+		# update the display when any setting changes
+		if self._settings.get_all_data() != previous:
 			self.clear_display()
 			self._display_init = False
 			self.setup_display()
-			self._last_i2c_address = self._i2c_address
-			self._last_image_rotate = self._image_rotate
-			self._last_pin_cancel = self._pin_cancel
-			self._last_pin_mode = self._pin_mode
-			self._last_pin_pause = self._pin_pause
-			self._last_pin_play = self._pin_play
-			self._last_debounce = self._debounce
 			self.clear_display()
 			self.check_system_stats()
 			self.start_system_timer()
 			self._screen_mode = ScreenModes.SYSTEM
 			self.update_ui()
 		
-
-	##~~ Softwareupdate hook
-
-	def get_update_information(self):
-		"""
-		Softwareupdate hook, standard library hook to handle software update and plugin version info
-		"""
-
-		# Define the configuration for your plugin to use with the Software Update
-		# Plugin here. See https://docs.octoprint.org/en/master/bundledplugins/softwareupdate.html
-		# for details.
-		return dict(
-			display_panel=dict(
-				displayName="OctoPrint Micro Panel",
-				displayVersion=self._plugin_version,
-
-				# version check: github repository
-				type="github_release",
-				user="sethvoltz",
-				repo="OctoPrint-DisplayPanel",
-				current=self._plugin_version,
-
-				# update method: pip
-				pip="https://github.com/sethvoltz/OctoPrint-DisplayPanel/archive/{target_version}.zip"
-			)
-		)
 
 	##~~ Helpers
 
@@ -784,6 +696,32 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		#message = template.format(type(ex).__name__, inspect.currentframe().f_code.co_name, ex.args)
 		#self._logger.warn(message)
 		self._logger.exception("Micro Panel exception")
+
+	##~~ Softwareupdate hook
+
+	def get_update_information(self):
+		"""
+		Softwareupdate hook, standard library hook to handle software update and plugin version info
+		"""
+
+		# Define the configuration for your plugin to use with the Software Update
+		# Plugin here. See https://docs.octoprint.org/en/master/bundledplugins/softwareupdate.html
+		# for details.
+		return dict(
+			display_panel=dict(
+				displayName="OctoPrint Micro Panel",
+				displayVersion=self._plugin_version,
+
+				# version check: github repository
+				type="github_release",
+				user="sethvoltz",
+				repo="OctoPrint-DisplayPanel",
+				current=self._plugin_version,
+
+				# update method: pip
+				pip="https://github.com/sethvoltz/OctoPrint-DisplayPanel/archive/{target_version}.zip"
+			)
+		)
 
 __plugin_name__ = "OctoPrint Micro Panel"
 __plugin_pythoncompat__ = ">=3,<4" # only python 3

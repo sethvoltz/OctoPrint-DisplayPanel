@@ -15,11 +15,11 @@ class DisplayTimer:
     """Coordination class for display timeout.
     """
     def __init__(self, settings, panel):
-        self.setup(settings)
         self.panel = panel
-        self.blank = False
         self.timer = None
+        self.blank = False
         self.last_printer_state = 4
+        self.setup(settings)
 
     def setup(self, settings):
         """Adjust settings when changed by the user.
@@ -97,7 +97,7 @@ class Panels:
 
     def __init__(self, settings, button_callback):
         self.button_callback = button_callback
-        self.display_timer = DisplayTimer(settings)
+        self.display_timer = DisplayTimer(settings, self)
         self.panels = []
         
         # Only try to connect to the micro panel if it successfully
