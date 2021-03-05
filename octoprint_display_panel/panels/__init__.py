@@ -8,7 +8,7 @@ except (NotImplementedError, ImportError):
 from . import virtual_panel
 
 import logging
-logger = logging.getLogger("octoprint.plugins.display_panel.virtual_panel")
+logger = logging.getLogger("octoprint.plugins.display_panel.panels")
 
 
 class DisplayTimer:
@@ -18,7 +18,7 @@ class DisplayTimer:
         self.panel = panel
         self.timer = None
         self.blank = False
-        self.last_printer_state = 4
+        self.last_printer_state = 0
         self.setup(settings)
 
     def setup(self, settings):
@@ -60,6 +60,7 @@ class DisplayTimer:
     def sleep(self):
         """Put the display to sleep and deactivate the timer.
         """
+        logger.info(f'Display blanking after {self.timeout} min timeout')
         self.blank = True
         self.panel.poweroff()
         self.cancel()
@@ -68,6 +69,7 @@ class DisplayTimer:
         """Activate the display and restore the timer based on the last
         known printer state.
         """
+        logger.info('Display powering on')
         self.blank = False
         self.panel.poweron()
         self.update(self.last_printer_state)

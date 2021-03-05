@@ -242,7 +242,6 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		# update the display when any setting changes
 		if self._settings.get_all_data() != previous:
 			self.clear_display()
-			self._display_init = False
 			self.setup_display()
 			self.clear_display()
 			self.check_system_stats()
