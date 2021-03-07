@@ -18,6 +18,18 @@ class MicroPanelCanvas:
         kwargs.setdefault('font', DEFAULT_FONT)
         kwargs.setdefault('fill', 255)
         self.text(point, message, **kwargs)
+
+    def text_right(self, y, message, **kwargs):
+        kwargs.setdefault('font', DEFAULT_FONT)
+        text_size = self.textsize(message, font=kwargs['font'])
+        if '\n' in message:
+            lines = message.rstrip('\n').split('\n')
+            line_height = text_size[1] / len(lines)
+            for i, line in enumerate(message.rstrip('\n').split('\n')):
+                self.text_right(y + (i * line_height), line, **kwargs)
+        else:
+            x = self.width - text_size[0]
+            self.text((x, y), message, **kwargs)
         
     def text_centered(self, y, message, **kwargs):
         kwargs.setdefault('font', DEFAULT_FONT)
@@ -28,7 +40,7 @@ class MicroPanelCanvas:
             for i, line in enumerate(message.rstrip('\n').split('\n')):
                 self.text_centered(y + (i * line_height), line, **kwargs)
         else:
-            x = (self.width / 2) - (text_width[0] / 2)
+            x = (self.width / 2) - (text_size[0] / 2)
             self.text((x, y), message, **kwargs)
         
     def __getattr__(self, key):
@@ -56,6 +68,7 @@ class MicroPanelScreenBase:
         This function may return a set containing action flags:
         - 'BACK': The current subscreen should be removed
         - 'DRAW': The screen should be refreshed
+        - 'IGNORE': The button press should not be handled by a parent screen
 
         """
         pass
@@ -73,6 +86,7 @@ class MicroPanelScreenBase:
         This function may return a set containing action flags:
         - 'BACK': The current subscreen should be removed
         - 'DRAW': The screen should be refreshed
+        - 'IGNORE': The event should not be handled by a parent screen
 
         """
         pass
@@ -100,7 +114,12 @@ class MicroPanelScreenBase:
         if self.subscreen is not None:
             if self.subscreen.wants_event(event):
                 r.update(self.subscreen.process_event(event, payload))
-            
+
+        if 'BACK' in r:
+            self.subscreen = None
+            r.remove('BACK')
+            r.add('DRAW')
+                
         if self.wants_event(event):
             r.update(self.handle_event(event, payload) or set())
 
@@ -114,6 +133,7 @@ class MicroPanelScreenBase:
         if 'BACK' in r:
             self.subscreen = None
             r.remove('BACK')
+            r.add('DRAW')
         elif not r:
             r.update(self.handle_button(label) or set())
             
