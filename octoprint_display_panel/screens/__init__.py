@@ -3,8 +3,10 @@ from . import base, system, printer
 
 
 class MicroPanelScreenTop(base.MicroPanelScreenBase):
-    def __init__(self, width, height):
+    def __init__(self, width, height, _printer, _settings):
         super().__init__(width, height)
+        self._printer = printer.PrinterHelper(_printer)
+        self._settings = _settings
 
         self.status_bar_height = 16
         if status_bar_on_top:
@@ -12,13 +14,15 @@ class MicroPanelScreenTop(base.MicroPanelScreenBase):
         else:
             self.status_bar_top = height - self.status_bar_height
         self.status_bar_screen = printer.PrinterStatusBarScreen(
-            width, self.status_bar_height)
+            width, self.status_bar_height, self._printer, self._settings)
 
         self.subscreen_height = height - self.status_bar_height
         self.screens = {
             'system': system.SystemInfoScreen(width, self.subscreen_height),
-            'printer': printer.PrinterInfoScreen(width, self.subscreen_height),
-            'print': printer.PrintStatusScreen(width, self.subscreen_height),
+            'printer': printer.PrinterInfoScreen(width, self.subscreen_height,
+                                                 self._printer),
+            'print': printer.PrintStatusScreen(width, self.subscreen_height,
+                                               self._printer),
         }
         self.current_screen = 'system'
         self.set_subscreen(self.current_screen)

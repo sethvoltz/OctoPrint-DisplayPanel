@@ -6,19 +6,13 @@ from octoprint.util import monotonic_time
 from . import base
 
 
-class OctoPrintPrinterProxy:
-    def __init__(self):
-        self._printer = None
+class PrinterHelper:
+    def __init__(self, _printer):
+        self._printer = _printer
 
-    def __bool__(self):
-        return self._printer is not None
-        
     def __getattr__(self, key):
         if self._printer:
             return getattr(self._printer, key)
-
-    def set(self, printer):
-        self._printer = printer
 
     # Helper methods
 
@@ -40,8 +34,6 @@ class OctoPrintPrinterProxy:
             return True
         return self._printer.get_current_connection()[0] == 'Closed'
         
-PRINTER = OctoPrintPrinterProxy()
-
 
 def get_time_from_seconds(seconds):
     """Convert a number of seconds into a human readable duration.
@@ -71,14 +63,18 @@ def float_count_formatter(number, max_chars):
 
 
 class PrinterInfoScreen(base.MicroPanelScreenBase):
+    def __init__(self, width, height, _printer):
+        super().__init__(self, width, height)
+        self._printer = _printer
+        
     def draw(self):
         c = self.get_canvas()
         c.text((0, 0), "Printer Temperatures")
         head_text = "no printer"
         bed_text = "no printer"
         
-        if PRINTER and not PRINTER.is_disconnected()
-            temperatures = PRINTER.get_current_temperatures()
+        if not self._printer.is_disconnected()
+            temperatures = self._printer.get_current_temperatures()
             tool = temperatures['tool0']
             if tool:
                 head_text = f"{tool['actual']} / {tool['target']}\xb0C"
@@ -106,8 +102,9 @@ class PrinterInfoScreen(base.MicroPanelScreenBase):
     
 
 class PrintStatusScreen(base.MicroPanelScreenBase):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, width, height, _printer):
+        super().__init__(width, height)
+        self._printer = _printer
         self.display_layer_progress = {
             'current_layer': -1, 'total_layer': -1,
             'current_height': -1.0, 'total_height': -1.0
@@ -115,23 +112,18 @@ class PrintStatusScreen(base.MicroPanelScreenBase):
         
     def draw(self):
         c = self.get_canvas()
-        if not PRINTER:
-            c.text((0, 0), f"State: unavailable")
-            return c.image
-            
-        c.text((0, 0), f"State: {PRINTER.get_state_string()}")
+        c.text((0, 0), f"State: {self._printer.get_state_string()}")
 
-        current_data = PRINTER.get_current_data()
-        if PRINTER.job['file']['name']:
-            c.text((0, 9), f"File: {current_data['job']['file']['name']}")
+        if self._printer.job['file']['name']:
+            c.text((0, 9), f"File: {self._printer.job['file']['name']}")
             
             print_time = get_time_from_seconds(
-                current_data['progress']['printTime'] or 0)
+                self._printer.progress['printTime'] or 0)
             c.text((0, 18), f"Time: {print_time}")
             
-            filament = (PRINTER.job['filament']['tool0']
-                        if 'tool0' in PRINTER.job['filament']
-                        else PRINTER.job['filament'])
+            filament = (self._printer.job['filament']['tool0']
+                        if 'tool0' in self._printer.job['filament']
+                        else self._printer.job['filament'])
             filament_length = float_count_formatter(
                 (filament['length'] or 0) / 1000, 3)
             filament_mass = float_count_formatter(
@@ -193,19 +185,23 @@ class PrintStatusScreen(base.MicroPanelScreenBase):
 
     
 class PrinterStatusBarScreen(base.MicroPanelScreenBase):
+    def __init__(self, width, height, _printer, _settings):
+        super().__init__(width, height)
+        self._printer = _printer
+        self._settings = _settings
+        
     def draw(self):
         c = self.get_canvas()
         display_string = ""
-        if not PRINTER:
-            display_string = "Unavailable"
-        elif PRINTER.is_disconnected:
+        if self._printer.is_disconnected:
             display_string = "Printer Not Connected"
-        elif PRINTER.flags['paused'] or PRINTER.flags['pausing']:
+        elif self._printer.flags['paused'] or self._printer.flags['pausing']:
             display_string = "Paused"
-        elif PRINTER.flags['cancelling']:
+        elif self._printer.flags['cancelling']:
             display_string = "Cancelling"
-        elif PRINTER.flags['ready'] and (PRINTER.progress['completion'] < 100):
-            if PRINTER.job['file']['name']:
+        elif (self._printer.flags['ready']
+              and self._printer.progress['completion'] < 100):
+            if self._printer.job['file']['name']:
                 display_string = "Ready to Start"
             else:
                 display_string = "Waiting for Job"
@@ -216,12 +212,12 @@ class PrinterStatusBarScreen(base.MicroPanelScreenBase):
         ###
         ### Draw the progress bar
         
-        percentage = PRINTER.progress['completion']
-        print_time = PRINTER.progress['printTime'] or 0
-        time_left = PRINTER.progress['printTimeLeft'] or 0
+        percentage = self._printer.progress['completion']
+        print_time = self._printer.progress['printTime'] or 0
+        time_left = self._printer.progress['printTimeLeft'] or 0
 
         # Calculate progress from time
-        if self.settings.get_boolean(['timebased_progress']) and print_time:
+        if self._settings.get_boolean(['timebased_progress']) and print_time:
             percentage = (print_time * 100) / (print_time + time_left)
 
         # Progress bar
@@ -231,7 +227,7 @@ class PrinterStatusBarScreen(base.MicroPanelScreenBase):
 
         # Percentage and ETA
         c.text((0, 5), f"{percentage:.0f}%")
-        eta = time.strftime(self.settings.get(["eta_strftime"], merged=True),
+        eta = time.strftime(self._settings.get(["eta_strftime"], merged=True),
                             time.localtime(time.time() + time_left))
         c.text_right(5, eta)
 
@@ -269,7 +265,7 @@ class JobCancelScreen(base.MicroPanelScreenBase):
             if self.expired or (monotonic_time() - self.press_time) < 1.0:
                 return {'IGNORE'}
             
-            PRINTER.cancel_print()
+            self._printer.cancel_print()
 
         self.expired = True
         return {'BACK'}
