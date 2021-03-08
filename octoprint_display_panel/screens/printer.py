@@ -5,6 +5,9 @@ from octoprint.util import monotonic_time
 
 from . import base
 
+import logging
+logger = logging.getLogger('octoprint.plugins.display_panel.screens.printer')
+
 
 class PrinterHelper:
     def __init__(self, _printer):
@@ -28,7 +31,6 @@ class PrinterHelper:
     def job(self):
         return self._printer.get_current_data()['job']
 
-    @property
     def is_disconnected(self):
         if self._printer is None:
             return True
@@ -64,7 +66,7 @@ def float_count_formatter(number, max_chars):
 
 class PrinterInfoScreen(base.MicroPanelScreenBase):
     def __init__(self, width, height, _printer):
-        super().__init__(self, width, height)
+        super().__init__(width, height)
         self._printer = _printer
         
     def draw(self):
@@ -73,21 +75,21 @@ class PrinterInfoScreen(base.MicroPanelScreenBase):
         head_text = "no printer"
         bed_text = "no printer"
         
-        if not self._printer.is_disconnected()
+        if not self._printer.is_disconnected():
             temperatures = self._printer.get_current_temperatures()
-            tool = temperatures['tool0']
+            tool = temperatures.get('tool0')
             if tool:
                 head_text = f"{tool['actual']} / {tool['target']}\xb0C"
             else:
                 head_text = "no tool"
                 
-            bed = temperatures['bed']
+            bed = temperatures.get('bed')
             if bed:
                 bed_text = f"{bed['actual']} / {bed['target']}\xb0C"
             else:
                 bed_text = "no bed"
-        c.text((0, 9), head_text)
-        c.text((0, 18), bed_text)
+        c.text((0, 9), f'Head: {head_text}')
+        c.text((0, 18), f' Bed: {bed_text}')
 
         return c.image
 
@@ -193,26 +195,33 @@ class PrinterStatusBarScreen(base.MicroPanelScreenBase):
     def draw(self):
         c = self.get_canvas()
         display_string = ""
-        if self._printer.is_disconnected:
+        if self._printer.is_disconnected():
             display_string = "Printer Not Connected"
         elif self._printer.flags['paused'] or self._printer.flags['pausing']:
             display_string = "Paused"
         elif self._printer.flags['cancelling']:
             display_string = "Cancelling"
         elif (self._printer.flags['ready']
-              and self._printer.progress['completion'] < 100):
+              and (self._printer.progress['completion'] or 0) < 100):
             if self._printer.job['file']['name']:
                 display_string = "Ready to Start"
             else:
                 display_string = "Waiting for Job"
+        elif self._printer.is_printing():
+            display_string = ""  # draw progress bar while printing
+        else:
+            display_string = self._printer.get_state_string()
+            display_string = display_string.replace("connection", "conn")
 
         if display_string:
             c.text_centered(4, display_string)
             return c.image
+        
         ###
         ### Draw the progress bar
+        ###
         
-        percentage = self._printer.progress['completion']
+        percentage = self._printer.progress['completion'] or 0
         print_time = self._printer.progress['printTime'] or 0
         time_left = self._printer.progress['printTimeLeft'] or 0
 

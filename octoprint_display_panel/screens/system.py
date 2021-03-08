@@ -1,4 +1,7 @@
 import time
+import psutil
+import shutil
+import socket
 
 from . import base
 
@@ -13,13 +16,15 @@ class SystemInfoScreen(base.MicroPanelScreenBase):
     def draw(self):
         self.get_stats()
         load = self.stats['load']
-        memory = self.stats['memory']
+        mem = self.stats['memory']
         disk = self.stats['disk']
         disk_percent = (disk.used / disk.total) * 100.0
+        MB = 1048576
+        GB = MB * 1024
         
         c = self.get_canvas()
-        c.text_centered(0, ip)
-        c.text((0, 9), f'L: {load[0]:.2f} {load[1]:.2f} {load[2]:.2f}')
+        c.text_centered(0, self.stats['ip'])
+        c.text((0, 9), f'L: {load[0]:.2f}, {load[1]:.2f}, {load[2]:.2f}')
         c.text((0, 18), (f'M: {mem.used//MB}/{mem.total//MB} MB'
                          f' {mem.percent}%'))
         

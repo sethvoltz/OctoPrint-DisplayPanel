@@ -17,7 +17,7 @@ class MicroPanelCanvas:
     def text(self, point, message, **kwargs):
         kwargs.setdefault('font', DEFAULT_FONT)
         kwargs.setdefault('fill', 255)
-        self.text(point, message, **kwargs)
+        self.draw.text(point, message, **kwargs)
 
     def text_right(self, y, message, **kwargs):
         kwargs.setdefault('font', DEFAULT_FONT)
