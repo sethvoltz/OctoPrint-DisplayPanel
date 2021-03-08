@@ -20,6 +20,8 @@ import inspect
 import adafruit_ssd1306
 import RPi.GPIO as GPIO
 
+from . import screens
+
 ## REFACTORING SCOPES
 ##   Changes to the following are scoped to a specific branch, and should
 ##   not be modified by another branch. Conflicting changes should be done
@@ -147,13 +149,18 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		EventHandlerPlugin lifecycle hook, called whenever an event is fired
 		"""
 
-		# self._logger.info("on_event: %s", event)
+		self._logger.info("on_event: %s", event)
 
+		self.set_printer_state(event)
+		
+		if not hasattr(self, 'top_screen'):
+			self._logger.info("No top screen yet")
+			return
+		
 		result = self.top_screen.process_event(event, payload)
 		if 'DRAW' in result:
 			self.update_ui()
 		
-		self.set_printer_state(event)
 #
 #		# Connectivity
 #		if event == Events.DISCONNECTED:
@@ -408,9 +415,8 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 		Function to check system stats periodically
 		"""
-		pass
-#		self._check_system_timer = RepeatedTimer(5, self.check_system_stats, None, None, True)
-#		self._check_system_timer.start()
+		self._check_system_timer = RepeatedTimer(5, self.update_ui, None, None, True)
+		self._check_system_timer.start()
 
 	def check_system_stats(self):
 		"""
@@ -569,6 +575,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 	def setup_screens(self):
 		"""Create the top level screen.
 		"""
+		self._logger.info("Creating top level screen")
 		self.top_screen = screens.MicroPanelScreenTop(
 			self.width, self.height,
 			self._printer, self._settings
@@ -578,9 +585,13 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 		Take action on a button press with the given name (such as 'cancel' or 'play')
 		"""
-		result = self.top_screen.process_button(label)
-		if 'DRAW' in result:
-			self.update_ui()
+		try:
+			result = self.top_screen.process_button(label)
+			self._logger.info(f'Button pressed, result {result}')
+			if 'DRAW' in result:
+				self.update_ui()
+		except:
+			self._logger.exception(f'pressed button {label}')
 		
 #		try:
 #			if label == 'cancel':
@@ -754,6 +765,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Update the on-screen UI based on the current screen mode and printer status
 		"""
 
+		
 		if self._display_init:
 			try:
 #				current_data = self._printer.get_current_data()
@@ -769,6 +781,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 #
 #				self.update_ui_bottom(current_data)
 
+				self._logger.info('Refreshing UI')
 				self.image = self.top_screen.image
 				
 				# Display image.

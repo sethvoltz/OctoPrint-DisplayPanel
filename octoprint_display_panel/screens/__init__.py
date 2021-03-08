@@ -1,15 +1,15 @@
+from octoprint.events import Events
 
 from . import base, system, printer
 
 
 class MicroPanelScreenTop(base.MicroPanelScreenBase):
     def __init__(self, width, height, _printer, _settings):
-        super().__init__(width, height)
         self._printer = printer.PrinterHelper(_printer)
         self._settings = _settings
 
         self.status_bar_height = 16
-        if status_bar_on_top:
+        if self._settings.get_boolean(["progress_on_top"], merged=True):
             self.status_bar_top = 0
         else:
             self.status_bar_top = height - self.status_bar_height
@@ -26,6 +26,7 @@ class MicroPanelScreenTop(base.MicroPanelScreenBase):
         }
         self.current_screen = 'system'
         self.set_subscreen(self.current_screen)
+        super().__init__(width, height)
 
     # This use of a property setter overrides the base behavior of
     # subscreens, so that if the subscreen is being set to None, it
@@ -37,16 +38,15 @@ class MicroPanelScreenTop(base.MicroPanelScreenBase):
     @subscreen.setter
     def subscreen(self, s):
         if s is None:
-            self.set_subscreen(self.current_screen)
+            self.set_subscreen(getattr(self, 'current_screen', None))
         else:
             self.__subscreen = s
         
     def set_subscreen(self, screen):
         if isinstance(screen, str):
-            screen = self.screens[screen]
             self.current_screen = screen
-        size = (self.width, self.height - self.status_bar_height)
-        super().set_subscreen(screen, size=size)
+            screen = self.screens[screen]
+        super().set_subscreen(screen)
 
     def next_subscreen(self):
         screen_list = list(self.screens.keys())
@@ -65,45 +65,46 @@ class MicroPanelScreenTop(base.MicroPanelScreenBase):
         main_image = super().image
         c.image.paste(main_image, (0, main_top))
         if main_image.size[1] < self.height:
-            c.image.paste(self.status_bar_screen.image, (0, status_bar_top))
+            c.image.paste(self.status_bar_screen.image,
+                          (0, self.status_bar_top))
         return c.image
 
     def handle_button(self, label):
-        if label == 'menu':
+        if label == 'mode':
             self.next_subscreen()
             return {'DRAW'}
 
         if label == 'play':
-            if printer.PRINTER.is_disconnected:
-                if printer.PRINTER:
-                    printer.PRINTER.connect()
+            if self._printer.is_disconnected:
+                if self._printer:
+                    self._printer.connect()
                 return {'DRAW'}
 
-            if (printer.PRINTER.flags['ready']
-                and (printer.PRINTER.progress['completion'] or 0) == 0
-                and printer.PRINTER.job['file']['name']):
-                printer.PRINTER.start_print()
+            if (self._printer.flags['ready']
+                and (self._printer.progress['completion'] or 0) == 0
+                and self._printer.job['file']['name']):
+                self._printer.start_print()
                 return {'DRAW'}
 
-            if not printer.PRINTER.is_paused():
+            if not self._printer.is_paused():
                 return {'IGNORE'}
 
-            printer.PRINTER.resume_print()
+            self._printer.resume_print()
             return {'DRAW'}
             
         if label == 'pause':
-            if not printer.PRINTER or not printer.PRINTER.is_printing():
+            if not self._printer or not self._printer.is_printing():
                 return {'IGNORE'}
 
-            printer.PRINTER.pause_print()
+            self._printer.pause_print()
             return {'DRAW'}
 
         if label == 'cancel':
-            if printer.PRINTER.is_disconnected:
+            if self._printer.is_disconnected:
                 return {'IGNORE'}
 
-            if (not printer.PRINTER.is_printing()
-                and not printer.PRINTER.is_paused()):
+            if (not self._printer.is_printing()
+                and not self._printer.is_paused()):
                 return {'IGNORE'}
             
             self.set_subscreen(
@@ -121,3 +122,12 @@ class MicroPanelScreenTop(base.MicroPanelScreenBase):
             self.set_subscreen('print')
 
         return {'DRAW'}
+
+    def process_event(self, event, payload):
+        r = set()
+        # also pass the event to the status bar screen
+        if self.status_bar_screen.wants_event(event):
+            r.update(self.status_bar_screen.process_event(event, payload))
+
+        r.update(super().process_event(event, payload))
+        return r
