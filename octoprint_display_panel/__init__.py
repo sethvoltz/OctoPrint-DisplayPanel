@@ -569,9 +569,10 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 	def setup_screens(self):
 		"""Create the top level screen.
 		"""
-		self.top_screen = screens.MicroPanelScreenTop(self.width,
-							      self.height)
-		
+		self.top_screen = screens.MicroPanelScreenTop(
+			self.width, self.height,
+			self._printer, self._settings
+		)
 		
 	def handle_button_press(self, label):
 		"""
