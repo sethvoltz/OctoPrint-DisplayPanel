@@ -1,3 +1,5 @@
+"""Printer-centric Micro Panel screens.
+"""
 import time
 import threading
 from octoprint.events import Events, eventManager
@@ -10,6 +12,13 @@ logger = logging.getLogger('octoprint.plugins.display_panel.screens.printer')
 
 
 class PrinterHelper:
+    """This class offers a few helpers to access commonly used data.
+
+    It normally proxies all attribute accesses to its `_printer`
+    instance variable, so for most purposes it can be treated
+    equivalently to the `_printer` instance.
+
+    """
     def __init__(self, _printer):
         self._printer = _printer
 
@@ -65,6 +74,8 @@ def float_count_formatter(number, max_chars):
 
 
 class PrinterInfoScreen(base.MicroPanelScreenBase):
+    """Base Information about the printer (temperatures)
+    """
     def __init__(self, width, height, _printer):
         super().__init__(width, height)
         self._printer = _printer
@@ -104,6 +115,8 @@ class PrinterInfoScreen(base.MicroPanelScreenBase):
     
 
 class PrintStatusScreen(base.MicroPanelScreenBase):
+    """Status information about the printer and any active print job.
+    """
     def __init__(self, width, height, _printer):
         super().__init__(width, height)
         self._printer = _printer
@@ -187,6 +200,8 @@ class PrintStatusScreen(base.MicroPanelScreenBase):
 
     
 class PrinterStatusBarScreen(base.MicroPanelScreenBase):
+    """The common status bar, showing either printer state or job progress.
+    """
     def __init__(self, width, height, _printer, _settings):
         super().__init__(width, height)
         self._printer = _printer
@@ -255,7 +270,15 @@ class PrinterStatusBarScreen(base.MicroPanelScreenBase):
     
 
 class JobCancelScreen(base.MicroPanelScreenBase):
-    def __init__(self, *args, **kwargs):
+    """The job cancel screen.
+    
+    This screen is shown by the MicroPanelScreenTop when the cancel
+    button is pressed.
+
+    """
+    def __init__(self, width, height, _printer):
+        super().__init__(width, height)
+        self._printer = _printer
         self.press_time = monotonic_time()
         self.expired = False
         self.timer = threading.Timer(10, self.timer_expired)
@@ -279,6 +302,10 @@ class JobCancelScreen(base.MicroPanelScreenBase):
         self.expired = True
         return {'BACK'}
 
+    # A synthetic event, defined below, is fired when the 10 second
+    # timer expires. This event is needed in order to make the plugin
+    # core aware that the screen needs to be redrawn.
+    
     EXPIRED_EVENT = 'MicroPanel_JobCancelScreenExpired'
         
     def timer_expired(self):

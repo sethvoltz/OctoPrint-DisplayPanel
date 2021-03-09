@@ -76,16 +76,8 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
                           octoprint.plugin.TemplatePlugin,
                           octoprint.plugin.SettingsPlugin):
 
-	_area_offset = 3
-	_cancel_requested_at = 0
-	_cancel_timer = None
-	_colored_strip_height = 15 # height of colored strip on top for dual color display
 	_debounce = 0
 	_display_init = False
-	_displaylayerprogress_current_height = -1.0
-	_displaylayerprogress_current_layer = -1
-	_displaylayerprogress_total_height = -1.0
-	_displaylayerprogress_total_layer = -1
 	_display_timeout_active = False
 	_display_timeout_option = 0	# -1 - deactivated, 0 - printer disconnected, 1 - disconnected/connected but idle, 2 - always
 	_display_timeout_time = 0
@@ -111,7 +103,6 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 	_printer_state = 0	# 0 - disconnected, 1 - connected but idle, 2 - printing
 	_progress_on_top = False
 	_screen_mode = ScreenModes.SYSTEM
-	_system_stats = {}
 	_timebased_progress = False
 
 	##~~ StartupPlugin mixin
@@ -149,63 +140,16 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		EventHandlerPlugin lifecycle hook, called whenever an event is fired
 		"""
 
-		self._logger.info("on_event: %s", event)
+		#self._logger.info("on_event: %s", event)
 
 		self.set_printer_state(event)
 		
 		if not hasattr(self, 'top_screen'):
-			self._logger.info("No top screen yet")
 			return
 		
 		result = self.top_screen.process_event(event, payload)
 		if 'DRAW' in result:
 			self.update_ui()
-		
-#
-#		# Connectivity
-#		if event == Events.DISCONNECTED:
-#			self._screen_mode = ScreenModes.SYSTEM
-#
-#		if event in (Events.CONNECTED, Events.CONNECTING, Events.CONNECTIVITY_CHANGED,
-#								 Events.DISCONNECTING):
-#			self.update_ui()
-#
-#		# Print start display
-#		if event == Events.PRINT_STARTED:
-#			self._screen_mode = ScreenModes.PRINT
-#			self.update_ui()
-#
-#		# Print end states
-#		if event in (Events.PRINT_FAILED, Events.PRINT_DONE, Events.PRINT_CANCELLED,
-#								 Events.PRINT_CANCELLING):
-#			self._displaylayerprogress_current_height = -1.0
-#			self._displaylayerprogress_current_layer = -1
-#			self._displaylayerprogress_total_height = -1.0
-#			self._displaylayerprogress_total_layer = -1
-#			self.update_ui()
-#
-#		# Print limbo states
-#		if event in (Events.PRINT_PAUSED, Events.PRINT_RESUMED):
-#			self.update_ui()
-#
-#		# Mid-print states
-#		if event in (Events.Z_CHANGE, Events.PRINTER_STATE_CHANGED):
-#			self.update_ui()
-#
-#		# Get progress information from DisplayLayerProgress plugin
-#		if event in ("DisplayLayerProgress_heightChanged",
-#						"DisplayLayerProgress_layerChanged"):
-#			if payload.get('currentHeight') != "-":
-#				self._displaylayerprogress_current_height = float(payload.get('currentHeight'))
-#			else:
-#				self._displaylayerprogress_current_height = -1.0
-#			if payload.get('currentLayer') != "-":
-#				self._displaylayerprogress_current_layer = int(payload.get('currentLayer'))
-#			else:
-#				self._displaylayerprogress_current_layer = -1
-#			self._displaylayerprogress_total_height = float(payload.get('totalHeight'))
-#			self._displaylayerprogress_total_layer = int(payload.get('totalLayer'))
-#			self.update_ui()
 
 	##~~ ProgressPlugin mixin
 
@@ -413,7 +357,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 
 	def start_system_timer(self):
 		"""
-		Function to check system stats periodically
+		Function to refresh the screen periodically
 		"""
 		self._check_system_timer = RepeatedTimer(5, self.update_ui, None, None, True)
 		self._check_system_timer.start()
@@ -425,24 +369,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Called by the system check timer on a regular basis. This function should remain small,
 		performant and not block.
 		"""
-		pass
-#		try:
-#			if self._screen_mode == ScreenModes.SYSTEM:
-#				s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#				s.connect(("8.8.8.8", 80))
-#				self._system_stats['ip'] = s.getsockname()[0]
-#				s.close()
-#				self._system_stats['load'] = psutil.getloadavg()
-#				self._system_stats['memory'] = psutil.virtual_memory()
-#				self._system_stats['disk'] = shutil.disk_usage('/') # disk percentage = 100 * used / (used + free)
-#
-#				self.update_ui()
-#			elif self._screen_mode == ScreenModes.PRINTER:
-#				# Just update the UI, the printer mode will take care of itself
-#				self.update_ui()
-#		except Exception as ex:
-#			self.log_error(ex)
-#			pass
+		pass # Deprecated method, please remove
 
 	def setup_display(self):
 		"""
@@ -575,11 +502,18 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 	def setup_screens(self):
 		"""Create the top level screen.
 		"""
-		self._logger.info("Creating top level screen")
-		self.top_screen = screens.MicroPanelScreenTop(
-			self.width, self.height,
-			self._printer, self._settings
-		)
+		self._logger.info("Initializing screens...")
+		try:
+		        self.top_screen = screens.MicroPanelScreenTop(
+			        self.width, self.height,
+			        self._printer, self._settings
+		        )
+		except:
+			self._logger.exception("Failed to initialize screen")
+			self.top_screen = screens.MessageScreen(
+				self.width, self.height,
+				"Failed to initialize,\ncheck OctoPrint log"
+			)
 		
 	def handle_button_press(self, label):
 		"""
@@ -587,100 +521,10 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 		try:
 			result = self.top_screen.process_button(label)
-			self._logger.info(f'Button pressed, result {result}')
 			if 'DRAW' in result:
 				self.update_ui()
 		except:
-			self._logger.exception(f'pressed button {label}')
-		
-#		try:
-#			if label == 'cancel':
-#				self.try_cancel()
-#			else:
-#				if self._cancel_timer is not None:
-#					self.clear_cancel()
-#				else:
-#					if label == 'mode':
-#						self.next_mode()
-#					if label == 'play':
-#						self.try_play()
-#					if label == 'pause':
-#						self.try_pause()
-#		except Exception as ex:
-#			self.log_error(ex)
-#			pass
-#
-#	def next_mode(self):
-#		"""
-#		Go to the next screen mode
-#		"""
-#
-#		self._screen_mode = self._screen_mode.next()
-#		self.update_ui()
-#
-#	def try_cancel(self):
-#		"""
-#		First click, confirm cancellation. Second click, trigger cancel
-#		"""
-#
-#		if not self._printer.is_printing() and not self._printer.is_paused():
-#			return
-#
-#		if self._cancel_timer:
-#			# GPIO can double-trigger sometimes, check if this is too fast and ignore
-#			if (time.time() - self._cancel_requested_at) < 1:
-#				return
-#
-#			# Cancel has been tried, run a cancel
-#			self.clear_cancel()
-#			self._printer.cancel_print()
-#		else:
-#			# First press
-#			self._cancel_requested_at = time.time()
-#			self._cancel_timer = RepeatedTimer(10, self.clear_cancel, run_first=False)
-#			self._cancel_timer.start()
-#			self.update_ui()
-#
-#	def clear_cancel(self):
-#		"""
-#		Clear a pending cancel, something else was clicked or a timeout occured
-#		"""
-#
-#		if self._cancel_timer:
-#			self._cancel_timer.cancel()
-#			self._cancel_timer = None
-#			self._cancel_requested_at = 0
-#			self.update_ui()
-#
-#	def try_play(self):
-#		"""
-#		If printer is not connected, try to connect to it.
-#		Otherwise, if possible, play or resume a print
-#		"""
-#
-#		if self._printer.get_current_connection()[0] == "Closed":
-#			self._printer.connect()
-#			return
-#
-#		current_data = self._printer.get_current_data()
-#		if current_data['state']['flags']['ready'] and (current_data['progress']['completion'] or 0) == 0 and current_data['job']['file']['name']:
-#			self._printer.start_print()
-#			return
-#
-#		if not self._printer.is_paused():
-#			return
-#
-#		self._printer.resume_print()
-#
-#	def try_pause(self):
-#		"""
-#		If possible, pause a running print
-#		"""
-#
-#		if not self._printer.is_printing():
-#			return
-#
-#		self._printer.pause_print()
+			self._logger.exception(f'Pressed button {label}')
 
 	def clear_display(self):
 		"""
@@ -768,20 +612,6 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		
 		if self._display_init:
 			try:
-#				current_data = self._printer.get_current_data()
-#
-#				if self._cancel_timer is not None and current_data['state']['flags']['cancelling'] is False:
-#					self.update_ui_cancel_confirm()
-#				elif self._screen_mode == ScreenModes.SYSTEM:
-#					self.update_ui_system()
-#				elif self._screen_mode == ScreenModes.PRINTER:
-#					self.update_ui_printer()
-#				elif self._screen_mode == ScreenModes.PRINT:
-#					self.update_ui_print(current_data)
-#
-#				self.update_ui_bottom(current_data)
-
-				self._logger.info('Refreshing UI')
 				self.image = self.top_screen.image
 				
 				# Display image.
@@ -792,219 +622,6 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 				self.disp.show()
 			except Exception as ex:
 				self.log_error(ex)
-
-#	def update_ui_cancel_confirm(self):
-#		"""
-#		Show a confirmation message that a cancel print has been requested
-#		"""
-#
-#		top = (self._colored_strip_height) * int(self._progress_on_top)
-#		bottom = self.height - (self._colored_strip_height * int(not self._progress_on_top))
-#		left = 0
-#		offset = self._area_offset * int(self._progress_on_top)
-#
-#		if self._display_init:
-#			try:
-#				self.draw.rectangle((0, top, self.width, bottom), fill=0)
-#
-#				display_string = "Cancel Print?"
-#				text_width = self.draw.textsize(display_string, font=self.font)[0]
-#				self.draw.text((self.width / 2 - text_width / 2, top + offset + 0), display_string, font=self.font, fill=255)
-#				display_string = "Press 'X' to confirm"
-#				text_width = self.draw.textsize(display_string, font=self.font)[0]
-#				self.draw.text((self.width / 2 - text_width / 2, top + offset + 9), display_string, font=self.font, fill=255)
-#				display_string = "Press any button or"
-#				text_width = self.draw.textsize(display_string, font=self.font)[0]
-#				self.draw.text((self.width / 2 - text_width / 2, top + offset + 18), display_string, font=self.font, fill=255)
-#				display_string = "wait 10 sec to escape"
-#				text_width = self.draw.textsize(display_string, font=self.font)[0]
-#				self.draw.text((self.width / 2 - text_width / 2, top + offset + 27), display_string, font=self.font, fill=255)
-#			except Exception as ex:
-#				self.log_error(ex)
-#
-#
-#	def update_ui_system(self):
-#		"""
-#		Update three-fourths of the screen with system stats collected by the timed collector
-#		"""
-#
-#		if self._display_init:
-#			top = (self._colored_strip_height) * int(self._progress_on_top)
-#			bottom = self.height - (self._colored_strip_height * int(not self._progress_on_top))
-#			left = 0
-#			offset = self._area_offset * int(self._progress_on_top)
-#
-#			# Draw a black filled box to clear the image.
-#			self.draw.rectangle((0, top, self.width, bottom), fill=0)
-#
-#			try:
-#				mem = self._system_stats['memory']
-#				disk = self._system_stats['disk']
-#
-#				# Center IP
-#				ip = self._system_stats['ip']
-#				tWidth, tHeight = self.draw.textsize(ip)
-#				self.draw.text((left + ((self.width - tWidth) / 2), top + offset + 0), ip, font=self.font, fill=255)
-#
-#				# System Stats
-#				self.draw.text((left, top + offset + 9), "L: %s, %s, %s" % self._system_stats['load'], font=self.font, fill=255)
-#				self.draw.text((left, top + offset + 18), "M: %s/%s MB %s%%" % (int(mem.used/1048576), int(mem.total/1048576), mem.percent), font=self.font, fill=255)
-#				self.draw.text((left, top + offset + 27), "D: %s/%s GB %s%%" % (int(disk.used/1073741824), int((disk.used+disk.total)/1073741824), int(10000*disk.used/(disk.used+disk.free))/100), font=self.font, fill=255)
-#			except:
-#				self.draw.text((left, top + offset + 9), "Gathering System Stats", font=self.font, fill=255)
-#
-#	def update_ui_printer(self):
-#		"""
-#		Update three-fourths of the screen with stats about the printer, such as temperatures
-#		"""
-#
-#		if self._display_init:
-#			top = (self._colored_strip_height) * int(self._progress_on_top)
-#			bottom = self.height - (self._colored_strip_height * int(not self._progress_on_top))
-#			left = 0
-#			offset = self._area_offset * int(self._progress_on_top)
-#
-#			try:
-#				self.draw.rectangle((0, top, self.width, bottom), fill=0)
-#				self.draw.text((left, top + offset + 0), "Printer Temperatures", font=self.font, fill=255)
-#
-#				if self._printer.get_current_connection()[0] == "Closed":
-#					self.draw.text((left, top + offset + 9), "Head: no printer", font=self.font, fill=255)
-#					self.draw.text((left, top + offset + 18), " Bed: no printer", font=self.font, fill=255)
-#				else:
-#					temperatures = self._printer.get_current_temperatures()
-#					tool = temperatures['tool0'] or None
-#					bed = temperatures['bed'] or None
-#
-#					self.draw.text((left, top + offset + 9), "Head: %s / %s\xb0C" % (tool['actual'], tool['target']), font=self.font, fill=255)
-#					self.draw.text((left, top + offset + 18), " Bed: %s / %s\xb0C" % (bed['actual'], bed['target']), font=self.font, fill=255)
-#			except Exception as ex:
-#				self.log_error(ex)
-#
-#	def update_ui_print(self, current_data):
-#		"""
-#		Update three-fourths of the screen with information about the current ongoing print
-#		"""
-#
-#		if self._display_init:
-#			top = (self._colored_strip_height) * int(self._progress_on_top)
-#			bottom = self.height - (self._colored_strip_height * int(not self._progress_on_top))
-#			left = 0
-#			offset = self._area_offset * int(self._progress_on_top)
-#
-#			try:
-#				self.draw.rectangle((0, top, self.width, bottom), fill=0)
-#				self.draw.text((left, top + offset + 0), "State: %s" % (self._printer.get_state_string()), font=self.font, fill=255)
-#
-#				if current_data['job']['file']['name']:
-#					file_name = current_data['job']['file']['name']
-#					self.draw.text((left, top + offset + 9), "File: %s" % (file_name), font=self.font, fill=255)
-#
-#					print_time = self._get_time_from_seconds(current_data['progress']['printTime'] or 0)
-#					self.draw.text((left, top + offset + 18), "Time: %s" % (print_time), font=self.font, fill=255)
-#
-#					filament = current_data['job']['filament']['tool0'] if "tool0" in current_data['job']['filament'] else current_data['job']['filament']
-#					filament_length = self.float_count_formatter((filament['length'] or 0) / 1000, 3)
-#					filament_mass = self.float_count_formatter(filament['volume'] or 0, 3)
-#					self.draw.text((left, top + offset + 27), "Filament: %sm/%scm3" % (filament_length, filament_mass), font=self.font, fill=255)
-#
-#					# Display height if information available from DisplayLayerProgress plugin
-#					height = "{:>5.1f}/{:>5.1f}".format(float(self._displaylayerprogress_current_height), float(self._displaylayerprogress_total_height))
-#					layer = "{:>4d}/{:>4d}".format(self._displaylayerprogress_current_layer, self._displaylayerprogress_total_layer)
-#					height_text = ""
-#					if self._displaylayerprogress_current_height != -1.0 and self._displaylayerprogress_current_layer != -1:
-#						height_text = layer + ";" + height
-#					elif self._displaylayerprogress_current_layer != -1:
-#						height_text = layer
-#					elif self._displaylayerprogress_current_height != -1.0:
-#						height_text = height
-#					self.draw.text((left, top + offset + 36), height_text, font=self.font, fill=255)
-#				else:
-#					self.draw.text((left, top + offset + 18), "Waiting for file...", font=self.font, fill=255)
-#			except Exception as ex:
-#				self.log_error(ex)
-#
-#	def update_ui_bottom(self, current_data):
-#		"""
-#		Update one-fourths of the screen with persistent information about the current print
-#		"""
-#
-#		if self._display_init:
-#			top = (self.height - self._colored_strip_height) * int(not self._progress_on_top)
-#			bottom = self.height - ((self.height - self._colored_strip_height) * int(self._progress_on_top))
-#			left = 0
-#
-#			try:
-#				# Clear area
-#				self.draw.rectangle((0, top, self.width, bottom), fill=0)
-#				display_string = ""
-#				if self._printer.get_current_connection()[0] == "Closed":
-#					# Printer isn't connected
-#					display_string = "Printer Not Connected"
-#				elif current_data['state']['flags']['paused'] or current_data['state']['flags']['pausing']:
-#					# Printer paused
-#					display_string = "Paused"
-#				elif current_data['state']['flags']['cancelling']:
-#					# Printer paused
-#					display_string = "Cancelling"
-#				elif current_data['state']['flags']['ready'] and (current_data['progress']['completion'] or 0) < 100:
-#					# Printer connected, not printing
-#					if current_data['job']['file']['name']:
-#						display_string = "Ready to Start"
-#					else:
-#						display_string = "Waiting For Job"
-#
-#				if display_string:
-#					text_width = self.draw.textsize(display_string, font=self.font)[0]
-#					self.draw.text((self.width / 2 - text_width / 2, top + 4), display_string, font=self.font, fill=255)
-#
-#				else:
-#					percentage = int(current_data['progress']['completion'] or 0)
-#					# Calculate progress from time
-#					if current_data['progress']['printTime'] and self._timebased_progress:
-#						percentage = int((current_data['progress']['printTime'] or 0) / ((current_data['progress']['printTime'] or 0) + current_data['progress']['printTimeLeft']) * 100)
-#					time_left = current_data['progress']['printTimeLeft'] or 0
-#
-#					# Progress bar
-#					self.draw.rectangle((0, top + 0, self.width - 1, top + 5), fill=0, outline=255, width=1)
-#					bar_width = int((self.width - 5) * percentage / 100)
-#					self.draw.rectangle((2, top + 2, bar_width, top + 3), fill=255, outline=255, width=1)
-#
-#					# Percentage and ETA
-#					self.draw.text((0, top + 5), "%s%%" % (percentage), font=self.font, fill=255)
-#					eta = time.strftime(self._eta_strftime, time.localtime(time.time() + time_left))
-#					eta_width = self.draw.textsize(eta, font=self.font)[0]
-#					self.draw.text((self.width - eta_width, top + 5), eta, font=self.font, fill=255)
-#			except Exception as ex:
-#				self.log_error(ex)
-#
-#	# Taken from tpmullan/OctoPrint-DetailedProgress
-#	def _get_time_from_seconds(self, seconds):
-#		hours = 0
-#		minutes = 0
-#
-#		if seconds >= 3600:
-#			hours = int(seconds / 3600)
-#			seconds = seconds % 3600
-#
-#		if seconds >= 60:
-#			minutes = int(seconds / 60)
-#			seconds = seconds % 60
-#
-#		return self._etl_format.format(**locals())
-#
-#	def float_count_formatter(self, number, max_chars):
-#		"""
-#		Show decimals up to a max number of characters, then flips over and rounds to integer
-#		"""
-#
-#		int_part = "%i" % round(number)
-#		if len(int_part) >= max_chars - 1:
-#			return int_part
-#		elif len("%f" % number) <= max_chars:
-#			return "%f" % number
-#		else:
-#			return "{num:0.{width}f}".format(num=number, width=len(int_part) - 1)
 
 	def log_error(self, ex):
 		"""
