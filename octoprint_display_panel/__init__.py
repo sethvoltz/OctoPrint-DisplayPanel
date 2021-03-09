@@ -19,40 +19,6 @@ import inspect
 from . import panels
 from .panels.virtual_panel import VirtualPanelMixin
 
-## REFACTORING SCOPES
-##   Changes to the following are scoped to a specific branch, and should
-##   not be modified by another branch. Conflicting changes should be done
-##   in the top-level refactor branch.
-##
-## refactor/virtual-panel
-##   - setup_display(), clear_display()
-##   - setup_gpio(), configure_gpio(), configure_single_gpio(), clean_gpio()
-##   - handle_gpio_event()
-##   - initialize(), get_settings_defaults(), on_settings_save()
-##   - bcm2board()
-##   - start_display_timer(), stop_display_timer(), trigger_display_timeout()
-## refactor/modular-screens
-##   - handle_button_press()
-##   - next_mode(), try_cancel(), clear_cancel(), try_play(), try_pause()
-##   - update_ui() and all other update_ui_***()
-##   - _screen_mode, ScreenModes
-##   - on_event(), on_print_progress(), on_slicing_progress()
-##   - start_system_timer(), check_system_stats()
-##   - set_printer_state()
-
-## COMMON INTERFACE
-##   The following shall be stable from the top-level refactor branch.
-##
-## Display_panelPlugin.disp
-##   - disp.width, disp.height
-##   - disp.fill(n)
-##   - disp.show()
-##   - disp.poweroff(), disp.poweron()
-##   - disp.image(img)
-## Display_panelPlugin.handle_button_press(label)
-## Display_panelPlugin.update_ui()
-## Display_panelPlugin.start_system_timer()
-## Display_panelPlugin.start_display_timer(reconfigure)
 
 class ScreenModes(Enum):
 	PRINT = 1
@@ -691,10 +657,9 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		Helper function for more complete logging on exceptions
 		"""
 
-		#template = "An exception of type {0} occurred on {1}. Arguments: {2!r}"
-		#message = template.format(type(ex).__name__, inspect.currentframe().f_code.co_name, ex.args)
-		#self._logger.warn(message)
-		self._logger.exception("Micro Panel exception")
+		template = "An exception of type {0} occurred on {1}. Arguments: {2!r}"
+		message = template.format(type(ex).__name__, inspect.currentframe().f_code.co_name, ex.args)
+		self._logger.warn(message)
 
 	##~~ Softwareupdate hook
 
