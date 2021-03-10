@@ -192,8 +192,12 @@ class PrintStatusScreen(base.MicroPanelScreenBase):
                 'current_layer': (int(payload.get('currentLayer'))
                                   if payload.get('currentLayer') != "-"
                                   else -1),
-                'total_height': float(payload.get('totalHeight')),
-                'total_layer': int(payload.get('totalLayer'))
+                'total_height': (float(payload.get('totalHeight'))
+                                 if payload.get('totalHeight') != "-"
+                                 else -1.0),
+                'total_layer': (int(payload.get('totalLayer')
+                                if payload.get('totalLayer') != "-" 
+                                else -1)
             }
             
         return {'DRAW'}
