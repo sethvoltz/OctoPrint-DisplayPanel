@@ -83,7 +83,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		EventHandlerPlugin lifecycle hook, called whenever an event is fired
 		"""
 
-		#self._logger.info("on_event: %s", event)
+		self._logger.info("on_event: %s", event)
 
 		self.set_printer_state(event)
 		
@@ -233,8 +233,9 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		self._logger.info("Initializing screens...")
 		try:
 		        self.top_screen = screens.MicroPanelScreenTop(
-			        self.width, self.height,
-			        self._printer, self._settings
+				self.width, self.height,
+				self._printer, self._settings,
+				self._file_manager
 		        )
 		except:
 			self._logger.exception("Failed to initialize screen")

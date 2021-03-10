@@ -285,3 +285,89 @@ class MicroPanelScreenBase:
         """Create a new canvas instance for drawing a screen.
         """
         return MicroPanelCanvas(self.width, self.height)
+
+
+class MicroPanelScreenScroll(MicroPanelScreenBase):
+    def __init__(self, width, height, title, menu, empty_text='None available'):
+        super().__init__(width, height)
+        self.title = title
+        self.menu = menu
+        self.empty_text = empty_text
+        self.selection = 0
+        self.top_index = 0
+        self.bottom_index = None
+        self.screen_lines = (self.height - 12) // 11
+        
+    def draw(self):
+        c = self.get_canvas()
+
+        if not self.menu:
+            c.text((8, 12), self.empty_text)
+            
+        elif self.bottom_index is not None:
+            # render bottom-to-top
+            bottom = self.height
+            for i in range(self.bottom_index, max(-1, self.bottom_index-4), -1):
+                menu_text = self.menu[i]
+                if i == self.selection:
+                    # invert video
+                    c.rectangle((0, bottom - 10, self.width, bottom), fill=255)
+                    c.text((8, bottom - 10), menu_text, fill=0)
+                    c.line([(1, bottom-7), (5, bottom-5), (1, bottom-3),
+                            (1, bottom-7)], fill=0, width=1)
+                else:
+                    c.text((8, bottom - 10), menu_text, fill=255)
+                bottom -= 11
+        else:
+            # render top-to-bottom
+            top = 12
+            for i in range(self.top_index, min(len(self.menu),
+                                               self.top_index + 4)):
+                menu_text = self.menu[i]
+                if i == self.selection:
+                    # invert video
+                    c.rectangle((0, top, self.width, top + 10), fill=255)
+                    c.text((8, top), menu_text, fill=0)
+                    c.line([(1, top+3), (5, top+5), (1, top+7), (1, top+3)],
+                           fill=0, width=1)
+                else:
+                    c.text((8, top), menu_text, fill=255)
+                top += 11
+
+        # draw title
+        c.rectangle((0, 0, self.width, 11), fill=0)
+        c.text_centered(0, self.title)
+        c.line([(0,10),(self.width,10)], fill=255, width=1)
+
+        return c.image
+
+    def handle_button(self, label):
+        if label == 'pause':
+            self.selection = min(self.selection + 1, len(self.menu) - 1)
+            if self.bottom_index is not None:
+                if self.bottom_index < self.selection:
+                    self.bottom_index = self.selection
+                    self.top_index = None
+            else:
+                if self.selection >= (self.top_index + self.screen_lines):
+                    self.bottom_index = self.selection
+                    self.top_index = None
+            return {'DRAW'}
+
+        elif label == 'cancel':
+            self.selection = max(self.selection - 1, 0)
+            if self.top_index is not None:
+                if self.top_index > self.selection:
+                    self.top_index = self.selection
+                    self.bottom_index = None
+            else:
+                if self.selection <= (self.bottom_index - self.screen_lines):
+                    self.top_index = self.selection
+                    self.bottom_index = None
+            return {'DRAW'}
+            
+        elif label == 'play':
+            return self.handle_menu_item(self.menu[self.selection])
+
+    def handle_menu_item(self, menu_item):
+        pass
