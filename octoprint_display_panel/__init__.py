@@ -161,7 +161,10 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		TemplatePlugin lifecycle hook, called to get templated settings
 		"""
 
-		return [dict(type="settings", custom_bindings=False)]
+		c = [dict(type="settings", custom_bindings=False)]
+		if self._settings.get_boolean(['virtual_panel'], merged=True):
+			c.append(dict(type="tab", name="Micro Panel", template="display_panel_virtualpanel.jinja2", custom_bindings=False))
+		return c
 
 	##~~ SettingsPlugin mixin
 
@@ -195,6 +198,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			pin_play		= -1,			# Default is disabled
 			progress_on_top	= False,		# Default is disabled
 			timebased_progress	= False,	# Default is disabled
+			virtual_panel = False, # Default is disabled
 		)
 
 	def on_settings_save(self, data):

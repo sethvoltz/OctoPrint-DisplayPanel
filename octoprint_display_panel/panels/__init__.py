@@ -110,8 +110,7 @@ class Panels:
             self.width, self.height = panel.width, panel.height
             self.panels.append(panel)
 
-        # TODO: make the virtual panel dependent on a setting
-        if True:
+        if settings.get_boolean(["virtual_panel"], merged=True):
             panel = virtual_panel.VirtualPanel(self.width, self.height,
                                                self.handle_button)
             self.panels.append(panel)
