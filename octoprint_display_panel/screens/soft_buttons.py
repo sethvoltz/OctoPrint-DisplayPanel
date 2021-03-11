@@ -10,47 +10,46 @@ class SoftButtonsScreen(base.MicroPanelScreenScroll):
     _logger = getLogger('octoprint.plugins.display_panel.soft_buttons')
     
     def __init__(self, width, height, _printer, _settings):
-        menu = [
-            'Auto Home',
-            'Bed Leveling',
-            'Filament Unload',
-            'Filament Load',
-            'Cooldown'
-        ]
-        super().__init__(width, height, 'Soft Buttons', menu)
+        super().__init__(width, height, 'Soft Buttons', [],
+                         empty_text="None - add in settings")
         self._printer = _printer
         self._settings = _settings
+        self.refresh_menu()
+
+    def refresh_menu(self):
+        self.menu = [
+            i['label'] for i in self._settings.get(['soft_buttons'],
+                                                   merged=True)
+        ]
         
     def handle_menu_item(self, menu_item):
+        # don't run GCODE if the printer is disconnected
         if self._printer.is_disconnected():
             return
-        
-        if menu_item == 'Auto Home':
-            self._printer.commands('G28')
-        elif menu_item == 'Bed Leveling':
-            self._printer.commands([
-                'M140 S50', 'G28', 'M190',
-                'G0 X30 Y30 Z1', 'G0 Z0', 'M0 Point 1',
-                'G0 X30 Y200 Z1', 'G0 Z0', 'M0 Point 2',
-                'G0 X200 Y200 Z1', 'G0 Z0', 'M0 Point 3',
-                'G0 X200 Y30 Z1', 'G0 Z0', 'M0 Point 4',
-                'G28'
-            ])
-        elif menu_item == 'Filament Load':
-            self._printer.commands('M701 L10')
-        elif menu_item == 'Filament Unload':
-            self._printer.commands('M702 U10')
-        elif menu_item == 'Cooldown':
-            self._printer.commands(['M104 S0', 'M140 S0'])
+
+        for i in self._settings.get(['soft_buttons'], merged=True):
+            if menu_item == i['label']:
+                commands = [
+                    c.strip() for c in i['gcode'].split(';')
+                ]
+                self._printer.commands(commands)
+                
         return {'DRAW'}
 
+    EVENTS = [Events.SETTINGS_UPDATED]
+
+    def handle_event(self, event, payload):
+        self.refresh_menu()
+        return {'DRAW'}
+    
 
 class FileSelectScreen(base.MicroPanelScreenScroll):
     _logger = getLogger('octoprint.plugins.display_panel.file_select')
     
-    def __init__(self, width, height, _printer, _file_manager):
+    def __init__(self, width, height, _printer, _file_manager, _settings):
         self._printer = _printer
         self._file_manager = _file_manager
+        self._settings = _settings
         self.folder = ""
         super().__init__(width, height, 'File Select', [])
         self.refresh_menu()
@@ -59,16 +58,18 @@ class FileSelectScreen(base.MicroPanelScreenScroll):
         m = {}
         files = self._file_manager.list_files(destinations='local',
                                               path=self.folder)['local']
+        skip_completed = bool(self._settings.get(["file_select_hide_complete"]))
         if self.folder:
             m['../'] = 9e999
         for name, metadata in files.items():
-            self._logger.info(f'{name}: {repr(metadata)}')
             if 'type' not in metadata:
                 continue
+            
             # skip files which have completed successfully
-            if 'history' in metadata and any(h.get('success')
-                                             for h in metadata['history']):
+            if (skip_completed and 'history' in metadata
+                and any(h.get('success') for h in metadata['history'])):
                 continue
+            
             if metadata['type'] == 'folder':
                 m[name + '/'] = 9e999
             elif metadata['type'] == 'machinecode':
@@ -85,10 +86,11 @@ class FileSelectScreen(base.MicroPanelScreenScroll):
         else:
             self.selection = 0
 
-    EVENTS = [Events.UPDATED_FILES]
+    EVENTS = [Events.UPDATED_FILES, Events.SETTINGS_UPDATED]
             
     def handle_event(self, event, payload):
         self.refresh_menu()
+        return {'DRAW'}
 
     def handle_menu_item(self, menu_item):
         if menu_item.endswith('/'):
@@ -96,12 +98,15 @@ class FileSelectScreen(base.MicroPanelScreenScroll):
                 os.path.join(self.folder, menu_item.rstrip('/')))
             if self.folder == '.':
                 self.folder = ''
+            self._logger.info(f'Selected directory: {menu_item}')
             self.refresh_menu()
             return {'DRAW'}
 
+        # don't select a file if the printer is disconnected
         if self._printer.is_disconnected():
             return
 
+        self._logger.info(f'Selected file: {menu_item}')
         self._printer.select_file(menu_item, False, printAfterSelect=False)
         return {'DRAW'}
         

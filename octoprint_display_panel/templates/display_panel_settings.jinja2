@@ -5,6 +5,7 @@
 		<ul class="nav nav-tabs" id="display_panel_tabs">
 			<li class="active"><a data-toggle="tab" href="#display_panel_buttons">Buttons</a></li>
 			<li><a data-toggle="tab" href="#display_panel_display">Display</a></li>
+			<li><a data-toggle="tab" href="#display_panel_soft_buttons">Soft Buttons</a></li>
 		</ul>
 
 		<div class="tab-content">
@@ -211,6 +212,35 @@
 						<div class="help-block">{{ _('Add a Micro Panel tab to the OctoPrint WebUI which mirrors the physical display. Changing this setting requires restarting OctoPrint.') }}</div>
 					</div>
 				</div>
+
+			</div>
+
+			<div id="display_panel_soft_buttons" class="tab-pane">
+				<div data-bind="foreach: settings.plugins.display_panel.soft_buttons">
+					<div class="control-group">
+						<label class="control-label"><input type="text" style="width:8em" placeholder="Label" data-bind="value: label"></label>
+						<div class="controls">
+							<div class="input-prepend">
+						     		<span class="add-on">GCode</span>
+								<input type="text" data-bind="value: gcode" placeholder="G28">
+							</div>
+							<button class="btn" data-bind="click: (me) => {$parent.settings.plugins.display_panel.soft_buttons.remove(me);}">Remove</button>
+						</div>
+					</div>
+				</div>
+
+				<button class="btn btn-primary" data-bind="click: () => {settings.plugins.display_panel.soft_buttons.push({label: '', gcode: ''});}">Add a Soft Button</button>
+
+				<hr>
+
+				<div class="control-group">
+					<label class="control-label">{{ _('Hide completed files:') }}</label>
+					<div class="controls" data-toggle="tooltip" title="{{ _('In the file selection screen, do not show successfully printed files.') }}">
+						<input class="input-checkbox" type="checkbox" data-bind="checked: settings.plugins.display_panel.file_select_hide_complete">
+						<div class="help-block">{{ _('In the file selection screen, do not show successfully printed files.') }}</div>
+					</div>
+				</div>
+
 
 			</div>
 

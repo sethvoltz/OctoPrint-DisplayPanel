@@ -69,7 +69,7 @@ class MicroPanelScreenTop(base.MicroPanelScreenBase):
                 width, self.subscreen_height, self._printer, self._settings),
             'fileselect': soft_buttons.FileSelectScreen(
                 width, self.subscreen_height, self._printer,
-                self._file_manager),
+                self._file_manager, self._settings),
         }
         self.current_screen = 'system'
         self.set_subscreen(self.current_screen)
@@ -199,11 +199,12 @@ class MicroPanelScreenTop(base.MicroPanelScreenBase):
         if self.status_bar_screen.wants_event(event):
             r.update(self.status_bar_screen.process_event(event, payload))
 
-        # and pass it to the print status screen, if it isn't being displayed
-        if self.screens['print'].wants_event(event):
-            if self.subscreen != self.screens['print']:
-                # don't propagate its response, because it's not on screen
-                self.screens['print'].process_event(event, payload)
+        # and pass it to certain subscreens, if it isn't being displayed
+        for screen in ('print', 'fileselect', 'softbuttons'):
+            if self.screens[screen].wants_event(event):
+                if self.subscreen != self.screens[screen]:
+                    # don't propagate its response, because it's not on screen
+                    self.screens[screen].process_event(event, payload)
             
         r.update(super().process_event(event, payload))
         return r

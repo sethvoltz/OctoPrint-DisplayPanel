@@ -83,7 +83,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		EventHandlerPlugin lifecycle hook, called whenever an event is fired
 		"""
 
-		self._logger.info("on_event: %s", event)
+		#self._logger.info("on_event: %s", event)
 
 		self.set_printer_state(event)
 		
@@ -156,6 +156,8 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 			progress_on_top	= False,		# Default is disabled
 			timebased_progress	= False,	# Default is disabled
 			virtual_panel = False, # Default is disabled
+			soft_buttons = [],
+			file_select_hide_complete = True,
 		)
 
 	def on_settings_save(self, data):
@@ -248,6 +250,7 @@ class Display_panelPlugin(octoprint.plugin.StartupPlugin,
 		"""
 		Take action on a button press with the given name (such as 'cancel' or 'play')
 		"""
+		#self._logger.info("Pressed button " + label)
 		try:
 			result = self.top_screen.process_button(label)
 			if 'DRAW' in result:
