@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.1] - 2021-04-11
+### Changed
+- Update micro panel tab to render the scaled up image with nearest neighbor (crisp pixels)
+
 ## [3.0.0] - 2021-04-11
 ### Refactor
 - Modularize panel interface and add a "virtual panel" in the web UI (kgutwin)
@@ -66,7 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release to community, official plugin on the OctoPrint plugin repository.
 
-[Unreleased]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v3.0.1...HEAD
+[3.0.1]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v2.1.1...v3.0.0
 [2.1.1]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/sethvoltz/OctoPrint-DisplayPanel/compare/v2.0.1...v2.1.0
