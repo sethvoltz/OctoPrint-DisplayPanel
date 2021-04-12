@@ -1,6 +1,6 @@
 <h3>Micro Panel</h3>
 <div>
-  <img id="micropanel" data-bind="attr: {src: currentImg}" style="width: 400px; border: 5px solid black">
+  <img id="micropanel" data-bind="attr: {src: currentImg}" style="width: 400px; border: 5px solid black; image-rendering: pixelated;">
 </div>
 <div>
   <button class="btn box" data-bind="click: btnMenu"><b>M</b></button>
@@ -23,13 +23,13 @@
     var options = {
       root: document.documentElement,
     };
-  
+
     var observer = new IntersectionObserver((entries, observer) => {
       entries.forEach(entry => {
         callback(element, entry.intersectionRatio > 0);
       });
     }, options);
-  
+
     observer.observe(element);
   }
 
