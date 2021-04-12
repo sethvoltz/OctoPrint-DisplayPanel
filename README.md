@@ -72,5 +72,5 @@ There are no configuration options for this plugin at the moment. Plug and play!
 
 **Many thanks** to the amazing community contributors that help support and improve this for everyone!
 
-| [<img src="https://avatars.githubusercontent.com/u/60842330?v=4" width="75px;"/><br /><sub><b>Jörg Eichhorn</b></sub>](https://github.com/unclej84) | [<img src="https://avatars.githubusercontent.com/u/5175695?v=4" width="75px;"/><br /><sub><b>Andy Barnett</b></sub>](https://github.com/Andy-ABTec) |
-| :---: | :---: |
+| [<img src="https://avatars.githubusercontent.com/u/60842330?v=4" width="75px;"/><br /><sub><b>Jörg Eichhorn</b></sub>](https://github.com/unclej84) | [<img src="https://avatars.githubusercontent.com/u/5175695?v=4" width="75px;"/><br /><sub><b>Andy Barnett</b></sub>](https://github.com/Andy-ABTec) | [<img src="https://avatars.githubusercontent.com/u/6315798?v=4" width="75px;"/><br /><sub><b>Karl Gutwin</b></sub>](https://github.com/kgutwin) |
+| :---: | :---: | :---: |
