@@ -150,8 +150,12 @@ class PrintStatusScreen(base.MicroPanelScreenBase):
             # Display height if information available from DisplayLayerProgress
             height = (f"{self.display_layer_progress['current_height']:>5.1f}"
                       f"/{self.display_layer_progress['total_height']:>5.1f}")
-            layer = (f"{self.display_layer_progress['current_layer']:4d}"
-                     f"/{self.display_layer_progress['total_layer']:4d}")
+            if self.display_layer_progress['total_layer'] != -1.0:          
+                layer = (f"{self.display_layer_progress['current_layer']:4d}"
+                         f"/{self.display_layer_progress['total_layer']:4d}")
+            else:
+                layer = (f"{self.display_layer_progress['current_layer']:4d}")
+           
             height_text = ""
             if (self.display_layer_progress['current_height'] != -1.0
                 and self.display_layer_progress['current_layer'] != -1):
