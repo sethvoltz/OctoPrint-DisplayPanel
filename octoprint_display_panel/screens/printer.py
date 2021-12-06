@@ -148,8 +148,12 @@ class PrintStatusScreen(base.MicroPanelScreenBase):
                 c.text((0, 27), f"Filament: {filament_length}m/{filament_mass}cm3")
 
             # Display height if information available from DisplayLayerProgress
-            height = (f"{self.display_layer_progress['current_height']:>5.1f}"
-                      f"/{self.display_layer_progress['total_height']:>5.1f}")
+            if self.display_layer_progress['total_height'] != 1.0
+                height = (f"{self.display_layer_progress['current_height']:>5.1f}"
+                          f"/{self.display_layer_progress['total_height']:>5.1f}")
+            else:
+                height = (f"{self.display_layer_progress['current_height']:>5.1f}"
+                          "/ NA")
             layer = (f"{self.display_layer_progress['current_layer']:4d}"
                      f"/{self.display_layer_progress['total_layer']:4d}")
             height_text = ""
