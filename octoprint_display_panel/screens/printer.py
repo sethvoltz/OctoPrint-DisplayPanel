@@ -153,7 +153,7 @@ class PrintStatusScreen(base.MicroPanelScreenBase):
                           f"/{self.display_layer_progress['total_height']:>5.1f}")
             else:
                 height = (f"{self.display_layer_progress['current_height']:>5.1f}"
-                          "/ NA")
+                          "/ --")
             layer = (f"{self.display_layer_progress['current_layer']:4d}"
                      f"/{self.display_layer_progress['total_layer']:4d}")
             height_text = ""
