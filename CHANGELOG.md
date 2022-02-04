@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Soft Buttons: a new screen allowing you to select from small snippets of GCODE such as "auto home", "cooldown", or your own custom bed leveling routine (kgutwin)
+- File Select: a new screen listing files and directories, allowing you to select your desired file from the printer (kgutwin)
 
 ## [3.0.2] - 2022-01-24
 ## Changed
