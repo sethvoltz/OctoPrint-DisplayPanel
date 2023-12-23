@@ -118,7 +118,7 @@ class MicroPanelCanvas:
 
         """
         kwargs.setdefault('font', DEFAULT_FONT)
-        text_size = self.textsize(message, font=kwargs['font'])
+        text_size = self.textbbox((0,0), message, font=kwargs['font'])
         if '\n' in message:
             lines = message.rstrip('\n').split('\n')
             if kwargs['font'] == DEFAULT_FONT:
@@ -126,11 +126,11 @@ class MicroPanelCanvas:
             elif 'line_height' in kwargs:
                 line_height = kwargs['line_height']
             else:
-                line_height = text_size[1] / len(lines)
+                line_height = text_size[3] / len(lines)
             for i, line in enumerate(message.rstrip('\n').split('\n')):
                 self.text_right(y + (i * line_height), line, **kwargs)
         else:
-            x = self.width - text_size[0]
+            x = self.width - text_size[2]
             self.text((x, y), message, **kwargs)
         
     def text_centered(self, y, message, **kwargs):
@@ -143,7 +143,7 @@ class MicroPanelCanvas:
 
         """
         kwargs.setdefault('font', DEFAULT_FONT)
-        text_size = self.textsize(message, font=kwargs['font'])
+        text_size = self.textbbox((0,0), message, font=kwargs['font'])
         if '\n' in message:
             lines = message.rstrip('\n').split('\n')
             if kwargs['font'] == DEFAULT_FONT:
@@ -151,11 +151,11 @@ class MicroPanelCanvas:
             elif 'line_height' in kwargs:
                 line_height = kwargs['line_height']
             else:
-                line_height = text_size[1] / len(lines)
+                line_height = text_size[3] / len(lines)
             for i, line in enumerate(message.rstrip('\n').split('\n')):
                 self.text_centered(y + (i * line_height), line, **kwargs)
         else:
-            x = (self.width / 2) - (text_size[0] / 2)
+            x = (self.width / 2) - (text_size[2] / 2)
             self.text((x, y), message, **kwargs)
         
     def __getattr__(self, key):
